@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- based on https://stackoverflow.com/questions/70606534/display-svg-file-in-html -->
+<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60">
+    <line x1="30" y1="0" x2="30" y2="60" stroke="black" stroke-width="2"></line>
+  
+  <circle cx="30" cy="20" r="3" fill="white" stroke="black" stroke-width="2"></circle>
+  <circle cx="30" cy="40" r="3" fill="white" stroke="black" stroke-width="2"></circle>
+  
+  error
+</svg>

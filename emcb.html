@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="emcb.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> 
+  </head>
+  <body>
+    <button id="open">Open Breaker</button>
+    <button id="close">Close Breaker</button>
+    <button id="update_device_list">Update Device List</button>
+    <button id="waves">Get Waveform</button>
+    <!--<button id="meter">Get Meter Data</button>-->
+    <form id="device_form">
+      <!--<input type="submit" name="update" value="Update Device List">-->
+      <!--<input type="submit" name="select" value="Select Device">-->
+    </form>
+    <div>
+      <button></button>
+      <svg width=60 height=30>
+        <line x1=0 y1=0 x2=60 y2=30 stroke='black'/>
+      </svg>
+    </div>
+    
+    
+    <div id='main display'>
+      <div id='plot display' style='display:block'>
+        
+      </div>
+      <div id='breaker display' style='display:inline-block'>
+        <img src='images/open_breaker_horizontal.svg' style='display:inline-block,padding=0px'/><!---
+        ---><svg width=60 height=60 style='margin-left=-2px'><!---
+          ---><line x1=-1 y1=30 x2=60 y2=30 stroke='red' stroke-width='2' style='margin-left=-2px'/><!---
+		---></svg>
+      </div>
+      <div id='load display' style='display:inline-block'>
+        <img src='images/battery1.png' alt = 'image not available' height = 300>
+      </div>
+    </div>
+    
+
+    <!--<button class="breakerButton horizontal">-->
+    <!--  <img class="breakerImage" src="images/open_breaker.svg" alt="cannot find image"/>-->
+    <!--</button>-->
+    
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      // USEFUL VARIABLES
+      var socket = io();
+      var device_list = [];
+      var current_device_id = NaN;
+      var device_radio_name = "device_list";
+      var reason = "testing API";
+      var horizontal = true;
+      
+      
+      
+      // HELPER FUNCTIONS
+      function disableButtons(true_if_disabling=true) {
+        var all_buttons = document.getElementsByTagName('button');
+        for (var i=0; i<all_buttons.length; i=i+1) {
+          var current_button = all_buttons[i];
+          current_button.disabled = true_if_disabling;
+        }
+      }
+      
+      function enableButtons(true_if_enabling=true) {
+        disableButtons(!true_if_enabling);
+      }
+      
+      function getBreakerLabel(SN, V1, A1, P1, V2=0, A2=0, P2=0) {
+        var breakerInfo = document.createElement('p');
+        breakerInfo.setAttribute('class','breakerLabel');
+        breakerInfo.appendChild(document.createTextNode('SN: ' + SN));
+        breakerInfo.appendChild(document.createElement('br'));
+        breakerInfo.appendChild(document.createTextNode('Amps: ' + A1));
+        breakerInfo.appendChild(document.createElement('br'));
+        breakerInfo.appendChild(document.createTextNode('Volts: ' + V1));
+        breakerInfo.appendChild(document.createElement('br'));
+        breakerInfo.appendChild(document.createTextNode('Power: ' + P1));
+        return breakerInfo;
+      }
+      
+      // addButton() assumes the device is online!! (emcb.isConnected()===true)
+      function addButton(device_id, SN, horizontal=true, state='open') {
+        if (state!=='open' && state!=='closed') {
+          throw new Error("input \'state\' must be \'open\' or \'closed\'");
+        }
+        
+        var divClass = 'breakerButtonDivHorz';
+        var labelClass = 'breakerLabelHorz';
+        var img_filename_suffix = '_horizontal.svg';
+        var imgClass = 'breakerImage';
+        var buttonClass = 'breakerButton';
+        if (horizontal !== true){
+          divClass = 'breakerButtonDivVert';
+          labelClass = 'breakerLabelVert';
+          img_filename_suffix = '_vertical.svg';
+        }
+        
+        var button = document.createElement('button'); 
+        button.setAttribute('class',buttonClass);
+        
+        var image = document.createElement('img');
+        image.setAttribute('class',imgClass);
+        image.setAttribute('alt','cannot find image');
+        socket.emit('get handle pos', device_id)
+        var img_filename_prefix = "images/open_breaker"; // defaulting to state='open'
+        if (state === 'closed') {
+          img_filename_prefix = "images/closed_breaker";
+        }
+        var img_filename = img_filename_prefix+img_filename_suffix;
+        image.setAttribute('src',img_filename);
+        
+        button.addEventListener('click', function(e) {
+          disableButtons(); // done to prevent a "too many requests" error when you try to open/close a breaker too often
+          var breaker_image = this.querySelector('.breakerImage');
+          var img_src = breaker_image.getAttribute('src');
+          var img_src_words = img_src.split("_");
+          var open_or_closed = img_src_words[0];
+          var horz_or_vert = img_src_words[2];
+          var reason = "remote control request";
+          if (open_or_closed === 'images/open') {
+            // breaker image is currently open_breaker.svg, so breaker is
+            // currently open, so close the breaker
+            img_src = "images/closed_breaker_" + horz_or_vert; 
+            socket.emit('close breaker', device_id,reason);
+          } else {
+            // breaker image is currently closed_breaker.svg, so breaker is
+            // currently closed, so open breaker
+            img_src = "images/open_breaker_" + horz_or_vert; 
+            socket.emit('open breaker', device_id,reason);
+          }
+          breaker_image.setAttribute('src',img_src);
+        });
+        
+        var volts=0;
+        var amps=0;
+        var power=0;
+        var breakerLabel = getBreakerLabel(SN,volts,amps,power);
+
+        var displayDiv = document.getElementById('breaker display');
+        displayDiv.setAttribute('style','width:1000; height:1000');
+        var breakerDiv = document.createElement('div');
+        breakerDiv.setAttribute('style','width:500; height:500');
+        var svg = document.createElement('svg');
+        svg.setAttribute('width','100');
+        svg.setAttribute('height','100');
+        svg.setAttribute('viewbox','0 0 100 100');
+        svg.setAttribute('style','display: inline-block');
+        var line = document.createElement('line');
+        line.setAttribute('x1','0');
+        line.setAttribute('y1','0');
+        line.setAttribute('x2','100');
+        line.setAttribute('y2','100');
+        line.setAttribute('stroke','black');
+        line.setAttribute('style','display: inline-block');
+        svg.appendChild(line);
+        breakerDiv.setAttribute('class', divClass);
+        breakerDiv.setAttribute('id',device_id);
+        breakerDiv.setAttribute('value',SN);
+        button.appendChild(image);
+        breakerDiv.appendChild(button);
+        breakerDiv.appendChild(svg);
+        // breakerDiv.appendChild(breakerLabel);
+        displayDiv.appendChild(breakerDiv);
+        
+        // socket.emit('update_device_lable',SN);
+      }
+      
+      
+      
+
+      
+      var open = document.getElementById('open');
+      var close = document.getElementById('close');
+      var waves = document.getElementById('waves');
+      var update_device_list = document.getElementById('update_device_list');
+      
+      // var breaker_button = document.querySelector('.breakerButtonVert,.breakerButtonHorz');
+      // breaker_button.addEventListener('click', function(e) {
+      //   var img_src = "images/open_breaker.svg";
+      //   var breaker_image = document.querySelector('.breakerImage');
+      //   if (breaker_image.getAttribute('src') === img_src) {
+      //     img_src = "images/closed_breaker.svg"; // toggle breaker images on click
+      //   }
+      //   breaker_image.setAttribute('src',img_src);
+      // });
+      // var SN = '30000c2a691f220b';
+      // var device_id = '88655f7a-9bf5-4c57-8a21-7cadd3326393';
+      // addButton(device_id,SN);
+
+      
+      
+      // RADIO BUTTONS TO SELECT BREAKER BY SERIAL NUMBER (SN)
+      var device_form = document.getElementById('device_form');
+      console.log(device_form);
+      disableButtons();
+      socket.emit('update device list', device_list);
+      socket.on('new device list', (new_device_list) => {
+        // clear current contents of the form    
+        while(device_form.firstChild) {
+          device_form.removeChild(device_form.lastChild);
+        }
+        
+        // update device list for use elsewhere in the HTML if needed
+        device_list = new_device_list;
+        
+        // add new radio button to the form, one for each device installed
+        for (var i=0; i<device_list.length; i=i+1){
+          // create new radio button
+          var device_info = device_list[i];
+          var device_input = document.createElement('input'); 
+          device_input.setAttribute("type","radio");
+          device_input.setAttribute("id",device_info.serialNumber);
+          device_input.setAttribute("name",device_radio_name); // you can only select one radio button out of all radio buttons with the same "name" attribute
+          device_input.setAttribute("value",device_info.id); // device ID (not SN) is required for open/closing breakers, etc.
+          if (device_info.id==current_device_id) { // select first device by default
+            device_input.setAttribute("checked","checked");
+          }
+          device_input.onclick = function () {
+            var device_radios = document.getElementsByName(device_radio_name);
+            for (var i=0; i<device_radios.length; i=i+1) {
+              if (device_radios[i].checked) {
+                current_device_id = device_radios[i].value;
+              }
+            }
+          };
+
+          // create label for radio button (EMCB serial number used for now)
+          var input_label = document.createElement('label');
+          input_label.setAttribute('for',device_info.serialNumber);
+          input_label.innerHTML = device_info.serialNumber;
+          
+          // line break for readability
+          var line_break = document.createElement('br');
+          
+          // add new elements to form element sequentiallyt
+          device_form.appendChild(device_input);
+          device_form.appendChild(input_label);
+          device_form.appendChild(line_break);
+          
+          addButton(device_info.id, device_info.serialNumber);
+        }
+        enableButtons();
+        console.log("device list updated");
+        console.log(device_list);
+      });
+      socket.on('no new device list', () => {
+        enableButtons();
+        console.log('device list already up to date');
+      });
+      update_device_list.addEventListener('click', function(e) {
+        disableButtons();
+        socket.emit('update device list', device_list);
+      });
+      
+
+      // OPEN BREAKER BUTTON
+      open.addEventListener('click', function(e) {
+        disableButtons();
+        socket.emit('open breaker', current_device_id, reason);
+      });
+      socket.on('retry open', function(device_id, reason) {
+        console.log('Breaker can not open because it is too soon after previous closing. Retrying...');
+        socket.emit('open breaker', device_id, reason);
+      });
+      socket.on('breaker opened', function(e) {
+        enableButtons();
+      });
+      
+      
+      
+      
+      // CLOSE BREAKER BUTTON
+      close.addEventListener('click', function(e) {
+        disableButtons();
+        socket.emit('close breaker', current_device_id, reason);
+      });
+      socket.on('retry close', function(device_id, reason) {
+        console.log('Breaker can not close because it is too soon after previous opening. Retrying...');
+        socket.emit('close breaker', device_id, reason);
+      });
+      socket.on('breaker closed', function(e) {
+        enableButtons();
+      });
+      
+      
+      
+      
+      // GET WAVEFORMS BUTTON
+      waves.addEventListener('click', function(e) {
+        disableButtons();
+        socket.emit('get waveforms', current_device_id);
+      });
+      socket.on('got waveforms', function(e) {
+        enableButtons();
+      });
+      
+      
+      // MISC EVENT HANDLERS
+      socket.on('handle open', function(deviceID) {
+        var buttonDiv = document.getElementById(deviceID);
+        var button = buttonDiv.querySelector('.breakerButton');
+        var image = button.querySelector('.breakerImage');
+        
+        var horz_or_vert = 'horizontal';
+        if (horizontal !== true) {
+          horz_or_vert = 'vertical';
+        }
+        var img_src = "images/open_breaker_" + horz_or_vert + ".svg";
+        image.setAttribute('src',img_src);
+      });
+      socket.on('handle closed', function(deviceID) {
+        var buttonDiv = document.getElementById(deviceID);
+        var button = buttonDiv.querySelector('.breakerButton');
+        var image = button.querySelector('.breakerImage');
+        var horz_or_vert = 'horizontal';
+        if (horizontal !== true) {
+          horz_or_vert = 'vertical';
+        }
+        var img_src = "images/closed_breaker_" + horz_or_vert + ".svg";
+        image.setAttribute('src',img_src);
+      });
+      socket.on('got meter data', function(device_info,V0,I0,P0,V1,I1,P1) {
+        var breakerDiv = document.getElementById(device_info.id);
+        var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
+        breakerLabel.remove();
+        var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
+        console.log(newBreakerLabel);
+        breakerDiv.appendChild(newBreakerLabel);
+      });
+      
+      // meter.addEventListener('click', function(e) {
+      //   socket.emit('read meter', current_device_id)
+      // });
+      
+      
+      
+      // testing plotting
+      const xArray = [50,60,70,80,90,100,110,120,130,140,150];
+      const yArray = [7,8,8,9,9,9,10,11,14,14,15];
+      
+      // Define Data
+      const data = [{
+        x:xArray,
+        y:yArray,
+        mode:"markers"
+      }];
+      
+      // Define Layout
+      const layout = {
+        xaxis: {range: [40, 160], title: "Square Meters"},
+        yaxis: {range: [5, 16], title: "Price in Millions"},  
+        title: "House Prices vs. Size"
+      };
+      
+      // Display using Plotly
+      Plotly.newPlot("plot display", data, layout);
+    </script>
+  </body>
+</html>

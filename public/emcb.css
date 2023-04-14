@@ -1,0 +1,51 @@
+body { 
+    margin: 0;
+    padding-bottom: 3rem;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.breakerButtonDivHorz {
+    width: 1000;
+    height: 1000;
+    display: inline-block;
+}
+
+.breakerButtonDivVert {
+    display: inline-block;
+}
+
+.breakerButtonDivHorz .breakerButtonDivVert {
+    border: none;
+    background: none;
+}
+
+.breakerButton {
+    height: 60px;
+    width: 60px;
+    padding: 0px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    display: inline-block
+}
+
+.breakerLabelVert {
+    display: inline-block
+}
+
+.breakerLabelHorz {
+    display: block
+}
+
+.breakerImage {
+    margin: 0px;
+    display: inline-block;
+}
+
+/* .horizontal { */
+    /* -webkit-transform: rotate(90deg);    /* chrome, safari, opera */
+    /* -moz-transform: rotate(90deg);       /* firefox */
+    /* -ms-transform: rotate(90deg);        /* internet explorer */
+    /* -o-transform: rotate(90deg);         /* also opera */
+    /* transform: rotate(90deg);            /* standard syntax */
+/* } */
