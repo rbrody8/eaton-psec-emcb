@@ -415,6 +415,7 @@ async function inviteInstaller(app_info, org_info, installer_info) {
     }
     if (alreadyInvited === true){
       // installer already invited - no need to invite again
+      console.log(installer_info.email + " is already an installer!");
       return;
     } else {
       var request = {
@@ -434,7 +435,7 @@ async function inviteInstaller(app_info, org_info, installer_info) {
         while (fileSystem.existsSync('installer'+j+'.json')) {
           j = j+1;
         }
-        var filename = process.cwd() + 'installer'+j+'.json';
+        var filename = process.cwd() + '/installer'+j+'.json';
         installer_info.file_name = filename;
         var output_str = JSON.stringify(installer_info,null,'\t');
         console.log('saving important organization info to ' + filename + '...');
@@ -452,7 +453,7 @@ async function inviteInstaller(app_info, org_info, installer_info) {
 async function deleteInstaller(app_info, org_info, installer_info) {
   // WARNING - YOU MUST DELETE THE CORRESPONDING installer.json MANUALLY
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
-  org_auth_promise.theh((org_info) => {
+  org_auth_promise.then((org_info) => {
     var request = {
       "method": "DELETE",
       "url": "https://api.em.eaton.com/api/v1/userRoles",
@@ -463,18 +464,33 @@ async function deleteInstaller(app_info, org_info, installer_info) {
           "Content-Type": "application/json"
       }
     };
-    
-    var payload = {
-        "email": "rmb147@pitt.edu",
-        "roleId": "ee4c3c74-ab67-8fa8-47c7-947167799051",
-        "organizationId": org_info.id
-    };
-    
-    request.data = payload;
+    request.data = installer_info;
     
     axios(request).then((response) => {
       fileSystem.unlinkSync(installer_info.file_name);
       console.log("Installer removed, and " + installer_info.file_name + " has been deleted");
+    });
+  });
+}
+
+async function getInstallers(app_info, org_info, installer_info) {
+  // WARNING - YOU MUST DELETE THE CORRESPONDING installer.json MANUALLY
+  var org_auth_promise = getOrgAuthToken(app_info, org_info);
+  org_auth_promise.then((org_info) => {
+    var request = {
+      "method": "GET",
+      "url": "https://api.em.eaton.com/api/v1/userRoles",
+      "headers": {
+          "Em-Api-Subscription-Key": app_info.api_key,
+          "Authorization": "Bearer " + org_info.auth.token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      }
+    };
+    request.data = installer_info;
+    
+    axios(request).then((response) => {
+      console.log(response.data.data);
     });
   });
 }
@@ -796,6 +812,6 @@ module.exports = {getAuthToken, getOrgAuthToken, getAPIAuthToken, createOrg,
   createLocation, createAddress, createPanel, listOrgs, getQuotas, readJSON,
   getDevices, getDeviceBySN, getDevicesByLocID, getDevicesByParentLocID, 
   setBreaker, openBreaker, closeBreaker, getWaveforms, readMeter, filterJSON, 
-  isAuthValid, getRoles, inviteInstaller, deleteInstaller, isEqualObjects,
-  getRemoteHandlePos, isConnected, getOrgs
+  isAuthValid, getRoles, inviteInstaller, deleteInstaller, getInstallers, 
+  isEqualObjects, getRemoteHandlePos, isConnected, getOrgs
 };

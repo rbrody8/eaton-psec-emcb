@@ -3,7 +3,7 @@
 // will recognize.
 (function main() {
   const fileSystem = require("fs");    // used for saving org data to app[x].JSON file
-  const emcb = require("./repo/emcb_lib.js"); // custom module wit common functions used when interacting with Eaton EMCB API
+  const emcb = require("./emcb_lib.js"); // custom module wit common functions used when interacting with Eaton EMCB API
 
   // For application "AsyncTest":
   var filename = "Eaton_PSEC_EMCBs.json"; // MUST BE .JSON FORMAT!! For info about JSON format: https://www.w3schools.com/whatis/whatis_json.asp
