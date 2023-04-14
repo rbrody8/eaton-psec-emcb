@@ -7,7 +7,7 @@ body {
 .breakerButtonDivHorz {
     width: 1000;
     height: 1000;
-    display: inline-block;
+    display: block;
 }
 
 .breakerButtonDivVert {
@@ -34,6 +34,8 @@ body {
 }
 
 .breakerLabelHorz {
+    margin-top: 0px;
+    margin-bottom: 40px;
     display: block
 }
 
@@ -41,6 +43,35 @@ body {
     margin: 0px;
     display: inline-block;
 }
+
+.load {
+    margin-bottom: 40px;
+    margin-right: 10px;
+    float: right;
+}
+
+.clear {
+    clear: both;
+}
+
+#breaker_display {
+    margin-top: 40px;
+    float:left;
+}
+
+#bus_display {
+    float:left;
+}
+
+#load_display {
+    float:left;
+}
+
+#plot_display {
+    clear: both;
+}
+
+
 
 /* .horizontal { */
     /* -webkit-transform: rotate(90deg);    /* chrome, safari, opera */

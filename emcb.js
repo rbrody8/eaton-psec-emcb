@@ -7,15 +7,17 @@
   const io = new Server(server);
   const emcb = require("./emcb_lib.js");
   const fileSystem = require("fs");    // used for saving data to files
-  const poll_imediately = false;
+  const poll_imediately = true;
   
   // a public directory that i can store imgages, stylesheets, scripts, etc. 
   // https://stackoverflow.com/questions/41991349/express-node-js-cant-get-image-to-load
   app.use(express.static('public'));
       
-  var app_filename = "AnotherToot(2).json";
+  // var app_filename = "AnotherToot(2).json";
+  var app_filename = "Eaton_PSEC_EMCBs.json";
   var app_info = emcb.readJSON(app_filename);
-  var org_filename = "org8.json";
+  // var org_filename = "org8.json";
+  var org_filename = "org_PSEC.json";
   var org_info = emcb.readJSON(org_filename);
   
     // io.on('read meter', (deviceInd) => {
@@ -149,12 +151,11 @@
     // start polling breakers
     if (poll_imediately) {
       emcb.getDevices(app_info,org_info).then((device_list) => {
-        for (let i=0; i<device_list.length; i=i+1){
-          var device = device_list[i];
-          if (device.id === "88655f7a-9bf5-4c57-8a21-7cadd3326393") {
-            pollBreaker(device, socket);
-          }
-        }
+        // for (let i=0; i<device_list.length; i=i+1){
+        //   var device = device_list[i];
+        //   pollBreaker(device, socket);
+        // }
+        pollBreaker(device_list[0], socket);
       });
     }
 

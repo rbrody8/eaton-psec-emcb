@@ -15,27 +15,36 @@
       <!--<input type="submit" name="update" value="Update Device List">-->
       <!--<input type="submit" name="select" value="Select Device">-->
     </form>
-    <div>
-      <button></button>
-      <svg width=60 height=30>
-        <line x1=0 y1=0 x2=60 y2=30 stroke='black'/>
-      </svg>
-    </div>
+ 
     
-    
-    <div id='main display'>
-      <div id='plot display' style='display:block'>
-        
+    <div id='main_display'>
+      <!--<div id='plot_display'>-->
+  
+      <!--</div>-->
+      <div id='power_flow_display'>
+        <div id='load_display'>
+          <div class='load '>
+            <img src='images/grid2.png' alt = 'image not available' height = 150>
+          </div>
+          <div class='load clear'>
+            <img src='images/EV.png' alt = 'image not available' height = 150>
+          </div>
+          <div class='load clear'>
+            <img src='images/battery1.png' alt = 'image not available' height = 150>
+          </div>
+          <div class='load clear'>
+            <img src='images/solar.png' alt = 'image not available' height = 150>
+          </div>
+        </div>
+        <div id='breaker_display'></div>
+        <div id='bus_display'>
+          <svg width=2 height=1000>
+            <line x1=1 y1=69 x2=1 y2=639 stroke='black' stroke-width=2>
+          </svg>
+        </div>
+        <div id='plot_display' style='display:inline-block'></div>
       </div>
-      <div id='breaker display' style='display:inline-block'>
-        <img src='images/open_breaker_horizontal.svg' style='display:inline-block,padding=0px'/><!---
-        ---><svg width=60 height=60 style='margin-left=-2px'><!---
-          ---><line x1=-1 y1=30 x2=60 y2=30 stroke='red' stroke-width='2' style='margin-left=-2px'/><!---
-		---></svg>
-      </div>
-      <div id='load display' style='display:inline-block'>
-        <img src='images/battery1.png' alt = 'image not available' height = 300>
-      </div>
+      
     </div>
     
 
@@ -68,16 +77,16 @@
         disableButtons(!true_if_enabling);
       }
       
-      function getBreakerLabel(SN, V1, A1, P1, V2=0, A2=0, P2=0) {
+      function getBreakerLabel(SN, V1, A1, P1, V2=0, A2=0, P2=0, numDec=3) {
         var breakerInfo = document.createElement('p');
-        breakerInfo.setAttribute('class','breakerLabel');
+        breakerInfo.setAttribute('class','breakerLabelHorz');
         breakerInfo.appendChild(document.createTextNode('SN: ' + SN));
         breakerInfo.appendChild(document.createElement('br'));
-        breakerInfo.appendChild(document.createTextNode('Amps: ' + A1));
+        breakerInfo.appendChild(document.createTextNode('Amps: ' + A1.toFixed(numDec)));
         breakerInfo.appendChild(document.createElement('br'));
-        breakerInfo.appendChild(document.createTextNode('Volts: ' + V1));
+        breakerInfo.appendChild(document.createTextNode('Volts: ' + V1.toFixed(numDec)));
         breakerInfo.appendChild(document.createElement('br'));
-        breakerInfo.appendChild(document.createTextNode('Power: ' + P1));
+        breakerInfo.appendChild(document.createTextNode('Power: ' + P1.toFixed(numDec)));
         return breakerInfo;
       }
       
@@ -104,13 +113,26 @@
         var image = document.createElement('img');
         image.setAttribute('class',imgClass);
         image.setAttribute('alt','cannot find image');
-        socket.emit('get handle pos', device_id)
+        socket.emit('get handle pos', device_id);
         var img_filename_prefix = "images/open_breaker"; // defaulting to state='open'
         if (state === 'closed') {
           img_filename_prefix = "images/closed_breaker";
         }
         var img_filename = img_filename_prefix+img_filename_suffix;
         image.setAttribute('src',img_filename);
+        var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+        svg.setAttributeNS(null,'width','125');
+        svg.setAttributeNS(null,'height','60');
+        svg.setAttributeNS(null,'style','margin-left=-2px');
+        var wire = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        wire.setAttributeNS(null,'x1','-1');
+        wire.setAttributeNS(null,'y1','30');
+        wire.setAttributeNS(null,'x2','125');
+        wire.setAttributeNS(null,'y2','30');
+        wire.setAttributeNS(null,'stroke','black');
+        wire.setAttributeNS(null,'stroke-width','2');
+        wire.setAttributeNS(null,'style','margin-left=-2px');
+        svg.appendChild(wire);
         
         button.addEventListener('click', function(e) {
           disableButtons(); // done to prevent a "too many requests" error when you try to open/close a breaker too often
@@ -139,33 +161,22 @@
         var power=0;
         var breakerLabel = getBreakerLabel(SN,volts,amps,power);
 
-        var displayDiv = document.getElementById('breaker display');
-        displayDiv.setAttribute('style','width:1000; height:1000');
+        var displayDiv = document.getElementById('breaker_display');
+        displayDiv.setAttribute('width',1000);
+        displayDiv.setAttribute('height',1000);
         var breakerDiv = document.createElement('div');
-        breakerDiv.setAttribute('style','width:500; height:500');
-        var svg = document.createElement('svg');
-        svg.setAttribute('width','100');
-        svg.setAttribute('height','100');
-        svg.setAttribute('viewbox','0 0 100 100');
-        svg.setAttribute('style','display: inline-block');
-        var line = document.createElement('line');
-        line.setAttribute('x1','0');
-        line.setAttribute('y1','0');
-        line.setAttribute('x2','100');
-        line.setAttribute('y2','100');
-        line.setAttribute('stroke','black');
-        line.setAttribute('style','display: inline-block');
-        svg.appendChild(line);
+        displayDiv.setAttribute('width',1000);
+        displayDiv.setAttribute('height',1000);
         breakerDiv.setAttribute('class', divClass);
         breakerDiv.setAttribute('id',device_id);
         breakerDiv.setAttribute('value',SN);
         button.appendChild(image);
         breakerDiv.appendChild(button);
         breakerDiv.appendChild(svg);
-        // breakerDiv.appendChild(breakerLabel);
+        breakerDiv.appendChild(breakerLabel);
         displayDiv.appendChild(breakerDiv);
         
-        // socket.emit('update_device_lable',SN);
+        socket.emit('update_device_lable',SN);
       }
       
       
@@ -177,24 +188,8 @@
       var waves = document.getElementById('waves');
       var update_device_list = document.getElementById('update_device_list');
       
-      // var breaker_button = document.querySelector('.breakerButtonVert,.breakerButtonHorz');
-      // breaker_button.addEventListener('click', function(e) {
-      //   var img_src = "images/open_breaker.svg";
-      //   var breaker_image = document.querySelector('.breakerImage');
-      //   if (breaker_image.getAttribute('src') === img_src) {
-      //     img_src = "images/closed_breaker.svg"; // toggle breaker images on click
-      //   }
-      //   breaker_image.setAttribute('src',img_src);
-      // });
-      // var SN = '30000c2a691f220b';
-      // var device_id = '88655f7a-9bf5-4c57-8a21-7cadd3326393';
-      // addButton(device_id,SN);
-
-      
-      
       // RADIO BUTTONS TO SELECT BREAKER BY SERIAL NUMBER (SN)
       var device_form = document.getElementById('device_form');
-      console.log(device_form);
       disableButtons();
       socket.emit('update device list', device_list);
       socket.on('new device list', (new_device_list) => {
@@ -244,7 +239,6 @@
         }
         enableButtons();
         console.log("device list updated");
-        console.log(device_list);
       });
       socket.on('no new device list', () => {
         enableButtons();
@@ -327,7 +321,6 @@
         var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
         breakerLabel.remove();
         var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
-        console.log(newBreakerLabel);
         breakerDiv.appendChild(newBreakerLabel);
       });
       
@@ -356,7 +349,7 @@
       };
       
       // Display using Plotly
-      Plotly.newPlot("plot display", data, layout);
+      Plotly.newPlot("plot_display", data, layout);
     </script>
   </body>
 </html>
