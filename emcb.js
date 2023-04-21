@@ -2,12 +2,15 @@
   const express = require('express');
   const app = express();
   const http = require('http');
-  const server = http.createServer(app);
+  const tcp_server = http.createServer(app);
   const { Server } = require("socket.io");
-  const io = new Server(server);
+  const io = new Server(tcp_server);
   const emcb = require("./emcb_lib.js");
   const fileSystem = require("fs");    // used for saving data to files
-  const poll_imediately = true;
+  const udp = require('dgram');
+  const udp_socket = udp.createSocket('udp4');
+  const poll_imediately = false;
+  
   
   // a public directory that i can store imgages, stylesheets, scripts, etc. 
   // https://stackoverflow.com/questions/41991349/express-node-js-cant-get-image-to-load
@@ -19,6 +22,21 @@
   // var org_filename = "org8.json";
   var org_filename = "org_PSEC.json";
   var org_info = emcb.readJSON(org_filename);
+  
+  
+  emcb.deleteAllUDPKeys(app_info,org_info).then(() => {
+    emcb.monitorUDPKeys(app_info,org_info);
+  });
+  
+  udp_socket.on('listening',function(){
+    var address = udp_socket.address();
+    var port = address.port;
+    console.log('UDP server is listening at port ' + port);
+  });
+  udp_socket.on("message", (msg, rinfo) => {
+    console.log("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+  });
+  udp_socket.bind(32866); // i think you have to use port 32866: https://api.em.eaton.com/docs/emlcp.html#section/Smart-Breaker-Local-Communications-Protocol/Protocol-Overview
   
     // io.on('read meter', (deviceInd) => {
   //   var deviceID = devices[deviceInd].id;
@@ -36,11 +54,15 @@
   // });
   
   async function resolveAfter5Sec() {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        resolve('resolved');
-      }, 5000);
-    });
+    var seconds = 5;
+    var ms_per_s = 1000;
+    var miliseconds = seconds*ms_per_s;
+    return emcb.asyncWait(miliseconds);
+    // return new Promise(resolve => {
+    //   setTimeout(() => {
+    //     resolve('resolved');
+    //   }, 5000);
+    // });
   }
   
   function pollAgainAfter5Sec(device_info,socket) {
@@ -161,10 +183,11 @@
 
   });
   
-  server.listen(8085, () => {
-    console.log('listening on *:8085');
+  tcp_server.listen(8085, () => {
+    console.log('TCP server is listening at port 8085');
   });
   
+  // udp_server.send(response)
   
   
   

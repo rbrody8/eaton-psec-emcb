@@ -1,0 +1,8 @@
+/var/lib/cloud9/emcb/repo/emcb_lib.js:890
+      return Promise.all(promises[i]).then(() => {
+                     ^
+
+TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))
+    at Function.all (<anonymous>)
+    at /var/lib/cloud9/emcb/repo/emcb_lib.js:890:22
+    at processTicksAndRejections (node:internal/process/task_queues:96:5)

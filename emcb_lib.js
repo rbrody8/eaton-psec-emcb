@@ -706,22 +706,25 @@ function isAuthValid(auth_info, safety_factor = 60*1e3) {
   if (expirationExists) {
     return false;
   }
+  
+  var one_min_in_milisec = 60*1e3;
+  return isExpired(auth_info,safety_factor = one_min_in_milisec) === false;
+} 
 
+function isExpired(token_or_key, safety_factor=60*1e3) {
   // code for comparing ISO 8601 times is from:
   //    https://stackoverflow.com/questions/18023857/compare-2-iso-8601-timestamps-and-output-seconds-minutes-difference
   //    https://developer.mozilla.org/en-US/docs/web/javascript/reference/global_objects/date
-  var time1_Date_obj = new Date(auth_info.expiresAt);
+  var time1_Date_obj = new Date(token_or_key.expiresAt);
   var now_in_ms = Date.now();
   var time_diff_in_ms = time1_Date_obj-now_in_ms; // positive if time1_Date_obj 
                                                   // is in the future
   if (time_diff_in_ms > safety_factor) {
-    console.log(auth_info);
-    console.log("Still Valid!");
     return true;
   } else {
     return false;
   }
-} 
+}
 
 function isEqualObjects(obj_a, obj_b) {
   // a recurve function that performs a deep comparison of objects
@@ -761,7 +764,7 @@ function isEqualObjects(obj_a, obj_b) {
   return true;
 }
 
-function isConnected(app_info,org_info,deviceID) {
+async function isConnected(app_info,org_info,deviceID) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
 
   return org_auth_promise.then((org_info) => {
@@ -783,7 +786,7 @@ function isConnected(app_info,org_info,deviceID) {
   });
 }
 
-function getOrgs(app_info) {
+async function getOrgs(app_info) {
   var api_auth_promise = getAPIAuthToken(app_info);
 
   return api_auth_promise.then((app_info) => {
@@ -803,6 +806,341 @@ function getOrgs(app_info) {
   });
 }
 
+async function createUDPKey(app_info,org_info,keyType) {
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  return org_auth_promise.then((org_info) => {
+    var request = {
+      "method": "POST",
+      "url": "https://api.em.eaton.com/api/v1/udpKeys",
+      "headers": {
+          "Em-Api-Subscription-Key": app_info.api_key,
+          "Authorization": "Bearer " + org_info.auth.token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      }
+    };
+    var payload = {
+      "keyType": keyType
+    };
+    request.data=payload;
+    
+    return axios(request).then((response) => {
+      return response.data.data;
+    });
+  });
+}
+
+async function getUDPKeys(app_info,org_info,keyID="") {
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  return org_auth_promise.then((org_info) => {
+    var request = {
+      "method": "GET",
+      "url": "https://api.em.eaton.com/api/v1/udpKeys",
+      "headers": {
+          "Em-Api-Subscription-Key": app_info.api_key,
+          "Authorization": "Bearer " + org_info.auth.token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      }
+    };
+    if (keyID !== ""){
+      request.url = request.url + "/" + keyID;
+    }
+    
+    return axios(request).then((response) => {
+      return response.data.data;
+    });
+  });
+}
+
+async function deleteUDPKey(app_info,org_info,keyID) {
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  return org_auth_promise.then((org_info) => {
+    var request = {
+      "method": "DELETE",
+      "url": "https://api.em.eaton.com/api/v1/udpKeys/" + keyID,
+      "headers": {
+          "Em-Api-Subscription-Key": app_info.api_key,
+          "Authorization": "Bearer " + org_info.auth.token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      }
+    };
+    
+    return axios(request).then((response) => {
+      return response.data.data;
+    });
+  });
+}
+
+async function deleteAllUDPKeys(app_info,org_info) {
+  console.log('Deleting all UDP keys...');
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  return org_auth_promise.then((org_info) => {
+    return getUDPKeys(app_info,org_info).then((UDPkeys) => {
+      var numKeys = UDPkeys.length;
+      var promises = [];
+      for (var i=0; i<numKeys; i=i+1) {
+        promises[i] = deleteUDPKey(app_info,org_info,UDPkeys[i].id);
+      }
+      return Promise.all(promises).then(() => {
+        console.log("Done deleting UDP keys.");
+      });
+    });
+  });
+}
+
+async function assignUDPKey(app_info,org_info,keyID,priority,deviceID) {
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  return org_auth_promise.then((org_info) => {
+    var request = {
+      "method": "POST",
+      "url": "https://api.em.eaton.com/api/v1/devices/" + deviceID + "/udpKeys",
+      "headers": {
+          "Em-Api-Subscription-Key": app_info.api_key,
+          "Authorization": "Bearer " + org_info.auth.token,
+          "Accept": "application/json",
+          "Content-Type": "application/json"
+      }
+    };
+    var payload = {
+      "keyId": keyID,
+      "priority": priority // either "primary" or "secondary"
+    };
+    request.data = payload;
+    
+    return axios(request).then((response) => {
+      return response.data.data;
+    });
+  });
+}
+
+async function asyncWait(miliseconds) {
+  return new Promise(resolve => {
+    setTimeout(() => {
+      resolve('resolved');
+    }, miliseconds);
+  });
+}
+
+async function asyncWaitOneDay() {
+  var ms_per_sec = 1000;
+  var sec_per_min = 60;
+  var min_per_hour = 60;
+  var hour_per_day = 24;
+  var ms_per_day = ms_per_sec*sec_per_min*min_per_hour*hour_per_day;
+  return asyncWait(ms_per_day);
+}
+
+async function monitorUDPKeys(app_info,org_info) {
+    console.log('Checking UDP keys...');
+
+  // this function will assign UDP keys initially, then check periodically for
+  // keys near expiration, then replaces nearly expired keys with new ones
+  
+  // key rotation protocol is explained in:
+    // https://portal.em.eaton.com/advancedTopics/localCommunication#keyLifetimeAndRotation
+  // essentially, you have two "types" of UDP keys: a "broadcast" key (send data
+  // to/from all EMCBs), and a unicast key (send data to/from one EMCB). Each
+  // EMCB can store two UDP keys of each type with one of two "priorities": 
+  // "primary" or "secondary". The level of priority arbitrary and only serves
+  // to distinguish between the two keys of each type. KEYS EXPIRE AFTER 7 DAYS, 
+  // SO HAVE 2 KEYS OF EACH TYPE ENSURES THAT YOU WILL NEVER LOSE CONNECTION
+  // WITH THE UDP SERVER, EVEN AFTER A KEY EXIPRES. HOWEVER, YOU MUST THEN
+  // ROTATE FROM USING THE PRIMARY KEY TO USING THE SECONDARY KEY IF THE PRIMARY  
+  // KEY IS GOING TO EXPIRE SOON (SOON = <2 DAYS HERE).
+  
+  // get all devices
+  var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  org_auth_promise.then(async (org_info) => {
+    getDevices(app_info, org_info).then(async (devices) => {
+      getUDPKeys(app_info,org_info).then(async (UDPkeys) => {
+        var numDevices = devices.length;
+        var numKeys = UDPkeys.length;
+        console.log(UDPkeys);
+
+        // if a UDP key exists for a devices[i], then has_xxxx_xxxx[i] will
+        // store the UDP key ID for that device to be used later. Otherwise,
+        // has_xxxx_xxxx[i] = "false", and this can be used later to check if keys exist
+        var key_count_broad = new Array(numDevices).fill(0);
+        var key_count_uni = new Array(numDevices).fill(0);
+        
+        var has_broad_primary = new Array(numDevices).fill("false");
+        var has_broad_secondary = new Array(numDevices).fill("false");
+        var has_uni_primary = new Array(numDevices).fill("false");
+        var has_uni_secondary = new Array(numDevices).fill("false");
+        
+        var expired_broad_primary = new Array(numDevices).fill(false);
+        var expired_broad_secondary = new Array(numDevices).fill(false);
+        var expired_uni_primary = new Array(numDevices).fill(false);
+        var expired_uni_secondary = new Array(numDevices).fill(false);
+        
+        for (var j = 0; j < numKeys; j = j+1){
+          var UDPkey = UDPkeys[j];
+          if (UDPkey.deviceIds === []) {
+            deleteUDPKey(app_info,org_info,UDPkey.id); // delete old secondary key, doesn't need to be asynchrnous
+            continue;
+          }
+          
+          var is_broadcast_key = (UDPkey.keyType === "broadcast");
+          var is_unicast_key = (UDPkey.keyType === "unicast");
+
+          var ms_per_second = 1000;
+          var second_per_hour = 3600;
+          var hours_per_day = 24;
+          var ms_per_day = ms_per_second*second_per_hour*hours_per_day;
+          var num_days = 2;
+          var safety_factor = ms_per_day*num_days; 
+          var is_expired = isExpired(UDPkey, safety_factor); // any key that will expire in less than 2 days is considered expired here when regenerating keys
+          
+          for (var i = 0; i < numDevices; i = i+1){
+            device = devices[i];
+            
+            if (device.id !== UDPkey.deviceIds[0]) {
+              // check if device ID matches UDPkey device ID, continue to
+              // next device if not in devices if not
+              continue;
+            }
+            
+            if (is_broadcast_key) {
+              if (key_count_broad[i]===0) {
+                has_broad_primary[i] = UDPkey.id;
+                if (is_expired) {
+                  expired_broad_primary[i] = true;
+                }
+                key_count_broad[i] = 1;
+              } else if (key_count_broad[i]===1) {
+                has_broad_secondary[i] = UDPkey.id;
+                if (is_expired) {
+                  expired_broad_secondary[i] = true;
+                }
+                key_count_broad[i] = 2;
+              }
+            } else if (is_unicast_key) { // unicast keys
+              if (key_count_uni[i] === 0) {
+                has_uni_primary[i] = UDPkey.id;
+                if (is_expired) {
+                  expired_uni_primary[i] = true;
+                }
+                key_count_uni[i] = 1;
+              } else if (key_count_uni[i]===1) {
+                has_uni_secondary[i] = UDPkey.id;
+                if (is_expired) {
+                  expired_uni_secondary[i] = true;
+                }
+                key_count_uni[i] = 2;
+              }
+            } else {
+              throw new Error("Error: this line should be unreachable unless the EMCB API changed");
+            }
+          }
+        }
+        
+        console.log(has_broad_primary);
+        console.log(has_broad_secondary);
+        console.log(has_uni_primary);
+        console.log(has_uni_secondary);
+        
+        var promises = [];
+        var count = 0;
+        for (var i = 0; i < numDevices; i = i+1) {
+          var device = devices[i];
+
+          // first for broadcast keys...
+          // if primary key and secondary key do not exist...
+          if (key_count_broad[i] === 0) {
+            var first_broad_promise = createUDPKey(app_info,org_info,"broadcast"); // create new primary key
+            first_broad_promise.then((new_key) => {
+              // console.log(device.id);
+              assignUDPKey(app_info,org_info,new_key.id,"primary",device.id); // assign new primary key
+            });
+            promises[count++] = first_broad_promise;
+          }
+          
+          // if primary key exists and expires in less than 2 days
+          if ((key_count_broad[i] >= 1) && (expired_broad_primary[i])) {
+            var sec_broad_promise = createUDPKey(app_info,org_info,"broadcast"); // create new secondary key
+            sec_broad_promise.then((new_key) => {
+              if (key_count_broad[i] >= 2) { // if secondary key already exists
+                deleteUDPKey(app_info,org_info,has_broad_secondary[i]); // delete old secondary key, doesn't need to be asynchrnous
+              }
+              assignUDPKey(app_info,org_info,new_key.id,"secondary",device.id); // assign new secondary key
+            });
+            promises[count++] = sec_broad_promise;
+          }
+          
+          // if secondary key exists and expires in less than 2 days
+          if ((key_count_broad[i] >= 2) && expired_broad_secondary[i]) {
+            var prim_broad_promise = createUDPKey(app_info,org_info,"broadcast"); // create new primary key
+            prim_broad_promise.then((new_key) => {
+              if (key_count_broad[i] >= 1) { // if primary key already exists
+                deleteUDPKey(app_info,org_info,has_broad_primary[i]); // delete old primarry key, doesn't need to be asynchrnous
+              }
+              assignUDPKey(app_info,org_info,new_key.id,"primary",device.id); // assign new primary key
+            });
+            promises[count++] = prim_broad_promise;
+          }
+          
+          // repeat for unicast keys...
+          // if primary key and secondary key do not exist...
+          if (key_count_uni[i] === 0) {
+            var first_uni_promise = createUDPKey(app_info,org_info,"unicast"); // create new primary key
+            first_uni_promise.then((new_key) => {
+              // console.log(device.id);
+              assignUDPKey(app_info,org_info,new_key.id,"primary",device.id); // assign new primary key
+            });
+            promises[count++] = first_uni_promise;
+          }
+          
+          // if primary key exists and expires in less than 2 days
+          if ((key_count_uni[i] >= 1) && expired_uni_primary[i]) {
+            var sec_uni_promise = createUDPKey(app_info,org_info,"unicast"); // create new secondary key
+            sec_uni_promise.then((new_key) => {
+              if (key_count_uni[i] == 2) { // if secondary key already exists
+                deleteUDPKey(app_info,org_info,has_uni_secondary[i]); // delete old secondary key, doesn't need to be asynchrnous
+              }
+              assignUDPKey(app_info,org_info,new_key.id,"secondary",device.id); // assign new secondary key
+            });
+            promises[count++] = sec_uni_promise;
+          }
+          
+          // if secondary key exists and expires in less than 2 days
+          if ((key_count_uni[i] == 2) && expired_uni_secondary[i]) {
+            var prim_uni_promise = createUDPKey(app_info,org_info,"unicast"); // create new primary key
+            prim_uni_promise.then((new_key) => {
+              if (key_count_uni[i] == 2) { // if primary key already exists
+                deleteUDPKey(app_info,org_info,has_uni_primary[i]); // delete old primarry key, doesn't need to be asynchrnous
+              }
+              assignUDPKey(app_info,org_info,new_key.id,"primary",device.id); // assign new primary key
+            });
+            promises[count++] = prim_uni_promise;
+          }
+          
+          await Promise.all(promises);
+        }
+        
+        // wait a day asynchronously, then call this function recursively
+        asyncWait(20000).then(() => { // wait for server info to update before printing
+          getUDPKeys(app_info,org_info).then((UDPkeys) => {
+            console.log("New UDP keys:");
+            console.log(UDPkeys);
+            console.log('waiting 1 day...');
+            asyncWaitOneDay().then(() => {
+              monitorUDPKeys(app_info,org_info);
+            });
+          });
+        });
+      });
+    });
+  });
+}
+
 // Including the function names in module.exports LIST below allows them to be 
 // seen/used by other code that uses this library (or "module" in JavaScript).
 // IF YOU ADD FUNCTIONS TO THIS LIBRARY, YOU MUST ADD THEM TO THE LIST BELOW.
@@ -813,5 +1151,7 @@ module.exports = {getAuthToken, getOrgAuthToken, getAPIAuthToken, createOrg,
   getDevices, getDeviceBySN, getDevicesByLocID, getDevicesByParentLocID, 
   setBreaker, openBreaker, closeBreaker, getWaveforms, readMeter, filterJSON, 
   isAuthValid, getRoles, inviteInstaller, deleteInstaller, getInstallers, 
-  isEqualObjects, getRemoteHandlePos, isConnected, getOrgs
+  isEqualObjects, getRemoteHandlePos, isConnected, getOrgs, getUDPKeys,
+  createUDPKey, deleteUDPKey, assignUDPKey, asyncWait, asyncWaitOneDay,
+  monitorUDPKeys, isExpired, deleteAllUDPKeys
 };

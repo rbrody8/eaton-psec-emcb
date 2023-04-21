@@ -56,6 +56,8 @@
     <script>
       // USEFUL VARIABLES
       var socket = io();
+      var udp = require('dgram');
+      var udp_socket = udp.createSocket('udp4');
       var device_list = [];
       var current_device_id = NaN;
       var device_radio_name = "device_list";
@@ -324,11 +326,16 @@
         breakerDiv.appendChild(newBreakerLabel);
       });
       
+      
       // meter.addEventListener('click', function(e) {
       //   socket.emit('read meter', current_device_id)
       // });
       
-      
+      udp_socket.on('message',function(msg,info){
+        console.log('Data received from server : ' + msg.toString());
+        console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
+      });
+      udp_socket.bind(32866);
       
       // testing plotting
       const xArray = [50,60,70,80,90,100,110,120,130,140,150];
