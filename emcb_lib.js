@@ -1,118 +1,120 @@
-// Documentation Last Updated: 3/7/2023, Ryan Brody
+/*
+Documentation Last Updated: 3/7/2023, Ryan Brody
 
-// This module implements the the Eaton Energy Management Circuit Breaker (EMCB)
-// application program interface (API) in JavaScript.
+This module implements the the Eaton Energy Management Circuit Breaker (EMCB)
+application program interface (API) in JavaScript.
 
-// If you don't know what an API is, the link below provides an explanatoin. The
-// Eaton EMCB API is a RESTful API.
-//    https://www.geeksforgeeks.org/what-is-an-api/
+If you don't know what an API is, the link below provides an explanatoin. The
+Eaton EMCB API is a RESTful API.
+    https://www.geeksforgeeks.org/what-is-an-api/
 
-// This library relies heavily on two objects that store important information
-// needed to access the API (i.e. the keys, IDs, and secrets needed to obtain 
-// authentication tokens and used frequently in the HTML request headers).
-// This is done to avoid using classes in an effort to be easier to understand
-// those with less coding experience.
-// The variable names for these two objects are:
-//    app_info  - stores application info from the "My Apps" page of the  
-//                EMCB developers' portal (https://portal.em.eaton.com/applications)
-//    org_info  - stores info for the organizations that have been created
-//                within each application
-// These variables are Objects. The possible keys are listed below, but they may
-// not always be present depending on the situation. For example, app_info.auth
-// and org_info.auth will not be present until after obtaining authentication
-// tokens uusing getAPIAuthToken() or getOrgAuthToken(), respecitvely. 
-//    app_info
-//      .api_key            - 
-//      .client_id          - 
-//      .secrets            - the clients secrets, stored this way to be the same as the organizaiton secretes
-//      .auth
+This library relies heavily on two objects that store important information
+needed to access the API (i.e. the keys, IDs, and secrets needed to obtain 
+authentication tokens and used frequently in the HTML request headers).
+This is done to avoid using classes in an effort to be easier to understand
+those with less coding experience.
+The variable names for these two objects are:
+    app_info  - stores application info from the "My Apps" page of the  
+                EMCB developers' portal (https://portal.em.eaton.com/applications)
+    org_info  - stores info for the organizations that have been created
+                within each application
+These variables are Objects. The possible keys are listed below, but they may
+not always be present depending on the situation. For example, app_info.auth
+and org_info.auth will not be present until after obtaining authentication
+tokens uusing getAPIAuthToken() or getOrgAuthToken(), respecitvely. 
+    app_info
+      .api_key            - 
+      .client_id          - 
+      .secrets            - the clients secrets, stored this way to be the same as the organizaiton secretes
+      .auth
 
-//    org_info
-//      .id
-//      .name
-//      .description
-//      .serviceAccount
-//          .clientId
-//          .secretes
-//      .addresses          - An array of addresss locaitos in the orgnization.
-//      .panels             - an array of panel locations in the organization.
-//      .file_name
-//      .auth
+    org_info
+      .id
+      .name
+      .description
+      .serviceAccount
+          .clientId
+          .secretes
+      .addresses          - An array of addresss locaitos in the orgnization.
+      .panels             - an array of panel locations in the organization.
+      .file_name
+      .auth
 
-// Secrets are stored in the following format because this is how the Eaton EMCB
-// returns the organization secrets after creating them:
-//    secrets = [
-// 	    {
-//     		"name": "secret1",
-//     		"value": "secret_value_string",
-//     		"expiry": "secret_expire_ISO8601"
-//     	},
-//     	{
-//     		"name": "secret2",
-//     		"value": "secret_value_string",
-//     		"expiry": "secret_expire_ISO8601"
-//     	}
-//    ]
+Secrets are stored in the following format because this is how the Eaton EMCB
+returns the organization secrets after creating them:
+    secrets = [
+	    {
+    		"name": "secret1",
+    		"value": "secret_value_string",
+    		"expiry": "secret_expire_ISO8601"
+    	},
+    	{
+    		"name": "secret2",
+    		"value": "secret_value_string",
+    		"expiry": "secret_expire_ISO8601"
+    	}
+    ]
 
-// Authentication token (i.e. ".auth") information is stored in an Object with
-// the following fields:
-//    .auth
-//        .token
-//        .expiresAt
+Authentication token (i.e. ".auth") information is stored in an Object with
+the following fields:
+    .auth
+        .token
+        .expiresAt
 
-// Addresses and electrical panels are both treated as "locations" by the EATON 
-// EMCB API, but this implementation treats them separately for clarity because 
-// each location type has different keys stored in the object. Keys for both 
-// locaiton types are:
-//    .addresses = [address_1, address_2, ..., address_i, ..., address_n]
-//    address_k
-//        .id
-//        .name
-//        .description
-//        .organizationId
-//        .contact
-//        .email
-//        .phone
-//        .locationType     - will always be "address" for the addresses
-//        .address
-//            .city
-//            .state
-//            .postalCode
-//            .street1
-//    .panels = [panel_1, panel_2, ..., panel_j, ..., panel_m]
-//    panel_m
-//        .id
-//        .name
-//        .parentLocationId - this must be equal to address_k.id for some k
-//        .organizationId   - this must be equal to org_info.id
-//        .locationTye      - will always be "equipment" for electrical panels
+Addresses and electrical panels are both treated as "locations" by the EATON 
+EMCB API, but this implementation treats them separately for clarity because 
+each location type has different keys stored in the object. Keys for both 
+locaiton types are:
+    .addresses = [address_1, address_2, ..., address_i, ..., address_n]
+    address_k
+        .id
+        .name
+        .description
+        .organizationId
+        .contact
+        .email
+        .phone
+        .locationType     - will always be "address" for the addresses
+        .address
+            .city
+            .state
+            .postalCode
+            .street1
+    .panels = [panel_1, panel_2, ..., panel_j, ..., panel_m]
+    panel_m
+        .id
+        .name
+        .parentLocationId - this must be equal to address_k.id for some k
+        .organizationId   - this must be equal to org_info.id
+        .locationTye      - will always be "equipment" for electrical panels
 
-// Because this module involves working with web servers, many of the functions
-// are asynchronous (deonted by the async keyword in front of the fucntion 
-// definition). As a result, they can't be used in the same way synchronous
-// functions are used. Synchronous functions will be executed line-by-line
-// and will execute in the order they appear in the code (i.e. lines at the top
-// execute first, the lines at the bottom execute last). With asynchronous
-// functions, functions in one line will start executing before the function
-// in the previous line finishes executing. Therefore, to make sure information
-// from an asynchronous funciton before another function is called, you 
-// need to use the then() rather than calling functions line by line. The then() 
-// function has the following syntax:
-//    function1.then(function2, error_function)
-// The way to think about this line of code is, "function1 executes, *then* 
-// function2 executes". Here, whatever is returned by function1 is passed as
-// input to funciton2. If there is an error in function1, error_funciton
-// executes instead of function2. Both function2 and error_funciton can be 
-// omited as follows:
-//    var function1_promise = function1.then()
-// In this case, funciton1_promise stores whatever value function1 returns if
-// function1 is done executing. If it's not done executing, function1_promise
-// is a Promise object, not a value. Promises are used by asynchronous functions
-// to keep track of when infomraiton returned by an asynchronous function is
-// ready to be used, in which case the promise is said to be "fullfilled". For
-// more information on promises, see the following website:
-//    https://www.w3schools.com/Js/js_promise.asp
-//    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+Because this module involves working with web servers, many of the functions
+are asynchronous (deonted by the async keyword in front of the fucntion 
+definition). As a result, they can't be used in the same way synchronous
+functions are used. Synchronous functions will be executed line-by-line
+and will execute in the order they appear in the code (i.e. lines at the top
+execute first, the lines at the bottom execute last). With asynchronous
+functions, functions in one line will start executing before the function
+in the previous line finishes executing. Therefore, to make sure information
+from an asynchronous funciton before another function is called, you 
+need to use the then() rather than calling functions line by line. The then() 
+function has the following syntax:
+    function1.then(function2, error_function)
+The way to think about this line of code is, "function1 executes, *then* 
+function2 executes". Here, whatever is returned by function1 is passed as
+input to funciton2. If there is an error in function1, error_funciton
+executes instead of function2. Both function2 and error_funciton can be 
+omited as follows:
+    var function1_promise = function1.then()
+In this case, funciton1_promise stores whatever value function1 returns if
+function1 is done executing. If it's not done executing, function1_promise
+is a Promise object, not a value. Promises are used by asynchronous functions
+to keep track of when infomraiton returned by an asynchronous function is
+ready to be used, in which case the promise is said to be "fullfilled". For
+more information on promises, see the following website:
+    https://www.w3schools.com/Js/js_promise.asp
+    https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise
+*/
 
 // Other JS modules that this library depends on:
 const axios = require('axios');      // used to handle HTML requests 
@@ -120,8 +122,47 @@ const axios = require('axios');      // used to handle HTML requests
                                      
 const fileSystem = require("fs");    // used for saving data to files
 const process = require("process");  // used to get current working directory
+const crypto  = require('crypto');   // for UDP key encryption
+const ip = require('ip');            // for figuring out UDP broadcast IP address
+const os = require('os');            // for figuring out UDP broadcast IP address
+const interfaces = os.networkInterfaces(); // for figuring out UDP broadcast IP address
+// var localIpV4Address = require("local-ipv4-address");
+const localIpV4Address = require("local-ipv4-address");
 // const plotly = require("plotly.js-dist"); // used for plotting (but it's not working)
 
+
+/******************************************************************************
+Description (from API documentation):
+- Obtain a service account authorization token for an Application or an 
+  Organization.
+
+Eaton EMCB API Function Implementation:
+- 'Obtain Service Account Authorization Token'
+  HTTP URL: https://api.em.eaton.com/api/v1/serviceAccount/authToken
+  API info: https://api.em.eaton.com/docs#operation/postServiceAccountAuthTokens
+
+Inputs:
+- api_key:        <string>  an Application or Organization API key
+- client_ID:      <string>  client ID corresponding the Application or 
+                  Organization described by 'api_key'
+- client_secret:  <string>  the secret key corresponding to the Application or
+                  Oragnization described by 'api_key' and 'client_ID'
+
+Outputs:
+- A promise that returns an authentication token object when resolved. The
+  promise resolves after receving a response form the Eaton API for the 
+  'serviceAccount/authToken' HTTP request. An authentication token object has 
+  the following properties:
+  - .token: <string> representing the authentication token
+  - .expiresAt: <string> token expiraiton date in ISO 8601 format
+  Example authentication token object output after promise resolves:
+    auth_token_obj = {
+      'token': 'auth_token_str'
+      'expiresAt': 'expiration_str_ISO_8601'
+    }
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function getAuthToken(api_key, client_ID, client_secret) {
   var request = {
     "method": "POST",
@@ -148,6 +189,27 @@ async function getAuthToken(api_key, client_ID, client_secret) {
   return response_promise;
 }
 
+
+/******************************************************************************
+Description:
+- A wrapper function for getAuthTocken designed to only require the 'app_info'
+  object and obtains an API authorization token
+
+Inputs:
+- app_info:       <Object>  the 'app_info' ojbect described in the header
+                  comments of this module. The following fields are required:
+                      .api_key
+                      .client_id
+                      .client_secret1
+
+Outputs:
+- A promise that resolves into an updated 'app_info' object with an updated
+  '.auth' property which stores the authentication token and expiration date 
+  from the Eaton API obtained by 'getAuthToken()'.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getAPIAuthToken(app_info) {
   var api_key = app_info.api_key;
   var clientId = app_info.client_id;
@@ -162,10 +224,6 @@ async function getAPIAuthToken(app_info) {
     var auth_info_promise = auth_response_promise.then((auth_info_obj) => {
       // store new authentication token in app_info after it's arrived
       app_info.auth = auth_info_obj;
-      // no need to return anything because javascript objects pass by 
-      // reference, updating app_info here also updates app_info in
-      // whatever called this funtion. returning auth_info anyways just 
-      // in case its ever needed
       return app_info;
     });
     // return a promise, and chain execute code after this function finishes by 
@@ -174,6 +232,29 @@ async function getAPIAuthToken(app_info) {
   }
 }
 
+
+/******************************************************************************
+Description:
+- A wrapper function for getAuthTocken designed to only require the 'app_info'
+  and 'org_info' objects and obtains an organization authorization token
+
+Inputs:
+- app_info:       <Object>  the 'app_info' ojbect described in the header
+                  comments of this module. The following fields are required:
+                      .api_key
+- org_info:       <Object>  the 'org_info' ojbect described in the header
+                  comments of this module. The following fields are required:
+                      .client_id
+                      .client_secret1
+
+Outputs:
+- A promise that resolves into an updated 'org_info' object with an updated
+  '.auth' property which stores the authentication token and expiration date 
+  from the Eaton API obtained by 'getAuthToken()'.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getOrgAuthToken(app_info, org_info) {
   // see getAPIAuthToken for documentation - this only has slight modifications
   var api_key = app_info.api_key;
@@ -192,19 +273,48 @@ async function getOrgAuthToken(app_info, org_info) {
   }
 }
 
+
+/******************************************************************************
+Description:
+- This function creates an organization, adds an address to it, and creates a
+  locaiton for the main breaker box within that organization according to the 
+  tutorial in the Eaton Smart Breaker Developer Portal (https://portal.em.eaton.com/).
+
+Eaton EMCB API Function Implementation:
+- 'Create an Organization'
+  HTTP URL: https://api.em.eaton.com/api/v1/organizations
+  API info: https://api.em.eaton.com/docs#operation/postOrganizations
+- another API call is used in this function, but it is defined in 
+  'createLocation' below
+
+Inputs:
+- app_filename:   <string>  .json filename with the data to be stored in 'app_info'
+- address_info:   <string>  client ID corresponding the Application or 
+                  Organization described by 'api_key'. 'address_info' must have
+                  the following fields:
+                    address = {
+                      "name": "Warrendale PSEC",
+                      "locationType": "address",
+                      "address": {
+                        "city": "Warrendale",
+                        "state": "Pennsylvania",
+                        "postalCode": "15086",
+                        "street1": "130 Commonwealth Drive"
+                      }
+                    };
+
+Outputs:
+- No outputs are returned, but the organization information is saved in a .json 
+  file stored in the same directory as this file.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+ - fs: for saving organization info to .json file
+******************************************************************************/ 
 async function createOrg(app_filename, address_info) {
   // createOrg() requires the address variable to be an object with the
   // following fields:
-  //    address = {
-  //      "name": "Warrendale PSEC",
-  //      "locationType": "address",
-  //      "address": {
-  //        "city": "Warrendale",
-  //        "state": "Pennsylvania",
-  //        "postalCode": "15086",
-  //        "street1": "130 Commonwealth Drive"
-  //      }
-  //    };
+  //    
   // STEP 0: GET AUTHENTICATION TOKEN
   var app_info = readJSON(app_filename);
   var auth_promise = getAPIAuthToken(app_info);
@@ -284,14 +394,53 @@ async function createOrg(app_filename, address_info) {
 
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Creates a location. 
+- A "custom" location can be created as a root level 
+  location (no parentLocationId) or below another custom location. When
+  creating a "custom" location, you must include a customTypeInfo field.
+- An "address" location can be created as a root level location
+  (no parentLocationId) or below a custom location. You may not create an
+  "address" location above or below another "address" location. When creating
+  an "address" location, you must include an address field. Any optional empty
+  or whitespace entries in the address fields are going to be removed.
+- An "equipment" location must be created below an "address" location. No
+  additional fields are required for creating an "equipment" location.
+
+Eaton EMCB API Function Implementation:
+- 'Create Location'
+  HTTP URL: https://api.em.eaton.com/api/v1/locations
+  API info: https://api.em.eaton.com/docs#operation/createLocation
+
+Inputs:
+- app_info:       <Object>  The app_info object explained above, where only
+                  the '.api_key' property is required.
+- org_info:       <Object>  The org_info object explained above, where only
+                  the '.id', .client_id' and '.client_secret1' properties are
+                  required.
+- location_info:  <Object>  The information describing the new locaiton. The
+                  properties needed depend on if creating an 'Address' or 
+                  'Equipment' location, so see 'createAddress()' and 
+                  'createPanel()' documentation below for examples of each.
+
+Outputs:
+- A promise that resolves into an object containing location information. The
+  exact properties in this object depend on if creating an 'Address' or
+  'Equipment' location, so see 'createAddress()' and 'createPanel()' 
+  documentation below for examples of each.
+
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function createLocation(app_info, org_info, location_info) {
   // get organization's authentication token
-  // console.log(org_info);
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
   
+  // create a location for EMCB's to exist in
   var location_added_promise = org_auth_promise.then(() => {
-    // console.log(org_info);
-    // create a location for EMCB's to exist in
+    // define HTTP request data
     var location_request = {
       "method": "POST",
       "url": "https://api.em.eaton.com/api/v1/locations",
@@ -306,16 +455,90 @@ async function createLocation(app_info, org_info, location_info) {
     payload.organizationId = org_info.id;
     location_request.data = payload;
     
+    // make HTTP request with axios
     var location_response_prom = axios(location_request);
+    
+    // filtering out unnecessary info in the HTTP response, where we only need
+    // the 'location_response.data.data' property
     var update_org_prom = location_response_prom.then((location_response) => {
       return location_response.data.data;
+      /* example output for an address
+        location_response.data.data = {
+          "id": "9e124983-31aa-40ba-a979-4bacb17fbcee",
+          "name": "Address 5",
+          "organizationId": "7bc05553-4b68-44e8-b7bc-37be63c6d9e9",
+          "description": "A nice location",
+          "parentLocationId": "67fb6396-e2af-44f1-a41b-4b26d7bb9b49",
+          "contact": "Stephanie King",
+          "email": "stephanie.king@example.com",
+          "phone": "1-555-555-1212",
+          "locationType": "equipment"
+        }
+      */
     });
     return update_org_prom;
   });
   
+  // return a promise that resolves to 'location_response.data.data'
   return location_added_promise;
 }
 
+
+/******************************************************************************
+Description:
+- A wrapper function that call 'createLocation()' when creating an 'Address'
+  (i.e. not an 'Equipment') location.
+
+Inputs:
+- app_info:       <Object>  The app_info object explained above, where only
+                  the '.api_key' property is required.
+- org_info:       <Object>  The org_info object explained above, where only
+                  the '.id', .client_id' and '.client_secret1' properties are
+                  required.
+- address_info:   <Object>  The information describing the address. The
+                  required properties are below, but others can be included:
+                      address_info = {
+                        "name": "PSEC Warrendale",
+                        "description": "Eaton Power Systems Experience Center (Warrendale)",
+                        "locationType": "address",
+                        "contact": "Dan Carnovale",
+                        "email": "DanielJCarnovale@Eaton.com",
+                        "phone": "+1 412 716 6938",
+                        "address": {
+                          "city": "Warrendale",
+                          "state": "Pennsylvania",
+                          "postalCode": "15086",
+                          "street1": "130 Commonwealth Drive"
+                        }
+                      }
+
+Outputs:
+- A promise that resolves into an object containing address information. 
+  Addresses are stored in the 'org_info.address' property (an array). Each
+  'org_info.addresses' element can have the following properties, but not all
+  are required:
+            org_info.addresses[i] = {
+              "id": "cfd1375b-87ac-4d89-8848-e00c70a1fd14", // Address ID
+              "name": "The Address Location Name",
+              "locationType": "address",
+              "description": "An example address",
+              "organizationId": "265cdaed-c4ee-47f1-a66c-0cdf9aab568e", // Organization ID
+              "address": {
+                  "city": "city",
+                  "state": "state",
+                  "postalCode": "postalCode",
+                  "street1": "street1",
+                  "street2": "street2",
+                  "coordinates": {
+                      "latitude": "60",
+                      "longitude": "89"
+                  }
+              }
+            }
+
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function createAddress(app_info, org_info, address_info) {
   var location_promise = createLocation(app_info,org_info,address_info);
   var update_org_promise = location_promise.then((new_address_info) => {
@@ -323,8 +546,70 @@ async function createAddress(app_info, org_info, address_info) {
     return org_info;
   });
   return update_org_promise;
+  /*
+        "org_info.address[org_info.locations.length - 1]" = {
+            "id": "cfd1375b-87ac-4d89-8848-e00c70a1fd14", // Address ID
+            "name": "The Address Location Name",
+            "locationType": "address",
+            "description": "An example address",
+            "organizationId": "265cdaed-c4ee-47f1-a66c-0cdf9aab568e", // Organization ID
+            "address": {
+                "city": "city",
+                "state": "state",
+                "postalCode": "postalCode",
+                "street1": "street1",
+                "street2": "street2",
+                "coordinates": {
+                    "latitude": "60",
+                    "longitude": "89"
+                }
+            }
+        }
+  */
 }
 
+
+/******************************************************************************
+Description :
+- A wrapper function that call 'createLocation()' when creating an 'Equipment'
+  (i.e. not an 'Address') location. Use this to create locations for different
+  panel boxes.
+
+Inputs:
+- app_info:       <Object>  The app_info object explained above, where only
+                  the '.api_key' property is required.
+- org_info:       <Object>  The org_info object explained above, where only
+                  the '.id', .client_id' and '.client_secret1' properties are
+                  required.
+- panel_info:     <Object>  The information describing the panel. The
+                  required properties are below, but others can be included:
+                  panel_info = {
+                    organizationId: org_info.id,
+                    name: "The Equipment Location Name",
+                    parentLocationId: org_info.addresses[0].id, 
+                    locationType: "equipment"
+                  };
+
+Outputs:
+- A promise that resolves into an object containing panel location information. 
+  Panel info is stored in the 'org_info.panels' property (an array). Each
+  'org_info.panel' element can have the following properties, but not all
+  are required:
+            org_info.panels[i] = {
+                "id": "37884e82-e81f-4932-aec0-96028aab5d0b",
+                "name": "The Equipment Location Name",
+                "locationType": "equipment",
+                "description": "An example equipment location",
+                "organizationId": "265cdaed-c4ee-47f1-a66c-0cdf9aab568e",
+                "parentLocationId": "cfd1375b-87ac-4d89-8848-e00c70a1fd14"
+                "contact": "Hugo Stotz",
+                "email": "hugo@eaton.com",
+                "phone": "(101) 123-4567"
+            }
+
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function createPanel(app_info, org_info, panel_info){
   var location_promise = createLocation(app_info,org_info,panel_info);
   var update_org_promise = location_promise.then((new_panel_info) => {
@@ -334,6 +619,27 @@ async function createPanel(app_info, org_info, panel_info){
   return update_org_promise;
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- List all organizations associated with the 'app_info' object.
+
+Eaton EMCB API Function Implementation:
+- 'Get Organizations'
+  HTTP URL: https://api.em.eaton.com/api/v1/organizations
+  API info: https://api.em.eaton.com/docs#operation/postOrganizations
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+
+
+Outputs:
+- A promise that resovles into a array of 'org_info' objects, where each 
+  element in the array has all the fields in the 'org_info' object listed above.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function listOrgs(app_info) {
   getAPIAuthToken(app_info).then((app_info) => {
     var request = {
@@ -806,6 +1112,23 @@ async function getOrgs(app_info) {
   });
 }
 
+
+// UDP Server Stuff
+// There exists a depricated, incomplete javascript module created by Eaton
+// that implements the EMCB UDP API (https://api.em.eaton.com/docs/emlcp.html).
+// The github for Eaton's UDP JS module hasn't been updated in 4 years, and the 
+// comments say the module is incomplete. Therefore, I am copying/pasting
+// relevant code here rather than importing the depricated module here.
+// Constants are from the 'emcbUDPconstants.js' module:
+// https://github.com/EatonEM/emcb-udp-master/blob/master/lib/emcbUDPconstants.js
+const EMCB_UDP_MESSAGE_CODE_GET_NEXT_SEQUENCE_NUMBER = 0x0000;
+const EMCB_UDP_MESSAGE_CODE_GET_DEVICE_DEBUG_DATA = 0x00FE;
+const EMCB_UDP_MESSAGE_CODE_GET_DEVICE_STATUS = 0x00FF;
+const EMCB_UDP_MESSAGE_CODE_GET_BREAKER_REMOTE_HANDLE_POSITION = 0x0100;
+const EMCB_UDP_MESSAGE_CODE_GET_METER_TELEMETRY_DATA = 0x0200;
+const EMCB_UDP_HEADER_START_MASTER = "ETNM"; // Start Byte of all Master->Slave requests
+const EMCB_UDP_HEADER_START_SLAVE = "ETNS"; // Start Byte of all Slave->Master responses
+
 async function createUDPKey(app_info,org_info,keyType) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
   
@@ -938,7 +1261,7 @@ async function asyncWaitOneDay() {
 }
 
 async function monitorUDPKeys(app_info,org_info) {
-    console.log('Checking UDP keys...');
+  console.log('Checking UDP keys...');
 
   // this function will assign UDP keys initially, then check periodically for
   // keys near expiration, then replaces nearly expired keys with new ones
@@ -963,6 +1286,7 @@ async function monitorUDPKeys(app_info,org_info) {
       getUDPKeys(app_info,org_info).then(async (UDPkeys) => {
         var numDevices = devices.length;
         var numKeys = UDPkeys.length;
+        console.log("Current UDP keys:");
         console.log(UDPkeys);
 
         // if a UDP key exists for a devices[i], then has_xxxx_xxxx[i] will
@@ -1041,11 +1365,6 @@ async function monitorUDPKeys(app_info,org_info) {
             }
           }
         }
-        
-        console.log(has_broad_primary);
-        console.log(has_broad_secondary);
-        console.log(has_uni_primary);
-        console.log(has_uni_secondary);
         
         var promises = [];
         var count = 0;
@@ -1126,11 +1445,11 @@ async function monitorUDPKeys(app_info,org_info) {
         }
         
         // wait a day asynchronously, then call this function recursively
-        asyncWait(20000).then(() => { // wait for server info to update before printing
+        asyncWait(20000).then(() => { 
           getUDPKeys(app_info,org_info).then((UDPkeys) => {
             console.log("New UDP keys:");
             console.log(UDPkeys);
-            console.log('waiting 1 day...');
+            console.log('waiting 1 day to recheck for UDP key expiration...');
             asyncWaitOneDay().then(() => {
               monitorUDPKeys(app_info,org_info);
             });
@@ -1140,6 +1459,153 @@ async function monitorUDPKeys(app_info,org_info) {
     });
   });
 }
+
+// this function is from the depricated and incomplete Eaton UDP github library.
+// Specificially, this is from the 'emcbUDPutils.js' module:
+// https://github.com/EatonEM/emcb-udp-master/blob/master/lib/emcbUDPutils.js
+function createEMCBudpBuffer(sequenceNumber, messageCode, messageData, signingKey){
+
+  if(!Buffer.isBuffer(signingKey)){
+    throw new Error("Invalid signingKey.  Expected signingKey to be type Buffer but got " + typeof signingKey);
+  }
+
+  // Allocate our immutable length header buffer
+  var header = Buffer.alloc(10);
+
+  // start with the "ETNM" Start bytes
+  header.write(EMCB_UDP_HEADER_START_MASTER, 0);	 //0x45, 0x54, 0x4E, 0x4D
+
+  // Add the Sequence Number
+  header.writeUInt32LE(sequenceNumber, 4);
+
+  // And the Message Code
+  header.writeUInt16LE(messageCode, 8);
+
+  // Create our body object and add our data to it, if it exists
+  var body = Buffer.from((messageData ? messageData : ""));
+
+  // Create our data object to sign
+  var data = Buffer.concat([header, body]);
+
+  // Calculate our signature
+  var signature = crypto
+                  .createHmac('sha256', signingKey)
+                  .update(data)
+                  .digest();
+
+  // Return the packet
+  return Buffer.concat([data, signature]);
+}
+
+function incrementSequenceNumber(seqNum, amount){
+  seqNum += amount || 1;
+  if(seqNum > 0xFFFFFFFF){
+    seqNum = 0;
+  }
+  return seqNum;
+}
+
+function getIpAddress(ifaceName){
+	return new Promise((resolve, reject) => {
+		if(ifaceName){
+			var filtered = interfaces[ifaceName].filter(details => {
+				return details.family === "IPv4";
+			});
+
+			if(filtered.length){
+				return resolve(filtered[0].address);
+			}
+
+			throw new Error("Unable to retrieve ipAddress for iface " + ifaceName);
+		} else {
+			return localIpV4Address()
+						.then(resolve)
+						.catch(reject);
+		}
+	});
+}
+
+function getBroadcastAddress(ifaceName){
+	return getIpAddress(ifaceName)
+		.then(ipAddress => {
+			for (var iface in interfaces){
+				var filtered = interfaces[iface].filter(details => {
+					return details.address === ipAddress;
+				});
+
+				if(filtered.length){
+					return ip.or(ip.not(filtered[0].netmask), filtered[0].address);
+				}
+			}
+
+			throw new Error("Unable to retrieve broadcast address for ipAddress " + ipAddress);
+		});
+}
+
+function getUDPport() {
+  // UDP prot must be 32866 for EMCBs (spells "EATON" on keypad)
+  // This port number is hardcoded into the EMCB firmware 
+  return 32866; 
+}
+
+function getNewSequenceNumber() {
+  return crypto.randomBytes(4).readUInt32LE(0); // line 53 from https://github.com/EatonEM/emcb-udp-master/blob/master/lib/emcbUDPbroadcastMaster.js
+}
+
+async function UDPsend(message_info, sequenceNumber) { 
+
+  if(sequenceNumber === undefined) {    // Can't use cute syntax like sequenceNumberOverride || this._sequenceNumber because we expect the override to generally be 0.
+    sequenceNumber = getNewSequenceNumber();
+  } // else its already a number and we should use it
+
+  var message_buffer = createEMCBudpBuffer(sequenceNumber, message_info.messageCode, message_info.messageData, message_info.udpKey);
+  var newSequenceNumber = incrementSequenceNumber(this._sequenceNumber);
+
+  var lastMessageSendTime = (new Date()).getTime();
+  
+  var port = message_info.UDPport;
+  var ip_address = message_info.broadcastIP;
+  message_info.socket.send(message_buffer,port,ip_address);
+  
+  var output = {
+    sequenceNumber: newSequenceNumber,
+    lastSendTime: lastMessageSendTime
+  };
+  return output;
+}
+
+async function getTelemetryDataUDP(UDPsocket,broadcastIP,sequenceNumber,UDPkey) {
+  var message_info = {
+    messageCode:  EMCB_UDP_MESSAGE_CODE_GET_METER_TELEMETRY_DATA,
+    messageData:  undefined,
+    socket:       UDPsocket,
+    broadcastIP:  broadcastIP,
+    UDPport:      getUDPport(),
+    UDPkey:       UDPkey
+  };
+  var output = UDPsend(sequenceNumber, message_info);
+  return output;
+}
+
+async function pollAllUDP(udp_socket,devices,UDPkeys) {
+  // var org_auth_promise = getOrgAuthToken(app_info,org_info);
+  
+  // org_auth_promise.then(async (org_info) => {
+  //   getDevices(app_info, org_info).then(async (devices) => {
+  //     getUDPKeys(app_info,org_info).then(async (UDPkeys) => {
+        var numDevices = devices.length;
+        var numKeys = UDPkeys.length;
+        console.log("Current UDP keys:");
+        console.log(UDPkeys);
+        
+        var sequence_num = getNewSequenceNumber();
+        var [sequence_num, message_time] = getTelemetryDataUDP(udp_socket,UDP_BROADCAST_IP,sequence_num,UDPkey);
+      // }
+    // }
+  // }
+  // activeMessage.tx.message = emcbUDPutils.createEMCBudpBuffer(activeMessage.tx.sequenceNumber, activeMessage.tx.messageCode, activeMessage.tx.messageData, activeMessage.tx.udpKey)
+}
+
 
 // Including the function names in module.exports LIST below allows them to be 
 // seen/used by other code that uses this library (or "module" in JavaScript).
@@ -1153,5 +1619,12 @@ module.exports = {getAuthToken, getOrgAuthToken, getAPIAuthToken, createOrg,
   isAuthValid, getRoles, inviteInstaller, deleteInstaller, getInstallers, 
   isEqualObjects, getRemoteHandlePos, isConnected, getOrgs, getUDPKeys,
   createUDPKey, deleteUDPKey, assignUDPKey, asyncWait, asyncWaitOneDay,
-  monitorUDPKeys, isExpired, deleteAllUDPKeys
+  monitorUDPKeys, isExpired, deleteAllUDPKeys, createEMCBudpBuffer, 
+  incrementSequenceNumber, getIpAddress, getBroadcastAddress, UDPsend, 
+  getUDPport, getTelemetryDataUDP, pollAllUDP
+  // EMCB_UDP_MESSAGE_CODE_GET_NEXT_SEQUENCE_NUMBER,
+  // EMCB_UDP_MESSAGE_CODE_GET_DEVICE_DEBUG_DATA,
+  // EMCB_UDP_MESSAGE_CODE_GET_DEVICE_STATUS,
+  // EMCB_UDP_MESSAGE_CODE_GET_BREAKER_REMOTE_HANDLE_POSITION,
+  // EMCB_UDP_MESSAGE_CODE_GET_METER_TELEMETRY_DATA
 };

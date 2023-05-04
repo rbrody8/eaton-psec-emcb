@@ -11,6 +11,9 @@
   const udp_socket = udp.createSocket('udp4');
   const poll_imediately = false;
   
+  const UDP_PORT = emcb.getUDPport(); // must be 32866 for EMCBs (spells "EATON" on keypad); hardcoded in EMCB firmware 
+  const UDP_BROADCAST_IP = emcb.getBroadcastAddress(); // use ifconfig in beablebone terminal to find the broadcast IP address
+  
   
   // a public directory that i can store imgages, stylesheets, scripts, etc. 
   // https://stackoverflow.com/questions/41991349/express-node-js-cant-get-image-to-load
@@ -23,20 +26,6 @@
   var org_filename = "org_PSEC.json";
   var org_info = emcb.readJSON(org_filename);
   
-  
-  emcb.deleteAllUDPKeys(app_info,org_info).then(() => {
-    emcb.monitorUDPKeys(app_info,org_info);
-  });
-  
-  udp_socket.on('listening',function(){
-    var address = udp_socket.address();
-    var port = address.port;
-    console.log('UDP server is listening at port ' + port);
-  });
-  udp_socket.on("message", (msg, rinfo) => {
-    console.log("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
-  });
-  udp_socket.bind(32866); // i think you have to use port 32866: https://api.em.eaton.com/docs/emlcp.html#section/Smart-Breaker-Local-Communications-Protocol/Protocol-Overview
   
     // io.on('read meter', (deviceInd) => {
   //   var deviceID = devices[deviceInd].id;
@@ -180,13 +169,29 @@
         pollBreaker(device_list[0], socket);
       });
     }
-
+    
   });
   
+  // TCP Server
   tcp_server.listen(8085, () => {
     console.log('TCP server is listening at port 8085');
   });
   
+  // UDP Server
+  udp_socket.on("message", (msg, rinfo) => {
+    console.log("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+  });
+  
+  udp_socket.on('listening', function(){
+    var address = udp_socket.address();
+    var port = address.port;
+    console.log('UDP server is listening at port ' + port);
+  });
+  udp_socket.bind(UDP_PORT); // i think you have to use port 32866: https://api.em.eaton.com/docs/emlcp.html#section/Smart-Breaker-Local-Communications-Protocol/Protocol-Overview
+  // emcb.pollAllUDP(udp_socket);
+  emcb.deleteAllUDPKeys(app_info,org_info).then(() => {
+    emcb.monitorUDPKeys(app_info,org_info);
+  });
   // udp_server.send(response)
   
   
