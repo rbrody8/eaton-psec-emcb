@@ -130,7 +130,6 @@ const interfaces = os.networkInterfaces(); // for figuring out UDP broadcast IP 
 const localIpV4Address = require("local-ipv4-address");
 // const plotly = require("plotly.js-dist"); // used for plotting (but it's not working)
 
-
 /******************************************************************************
 Description (from API documentation):
 - Obtain a service account authorization token for an Application or an 

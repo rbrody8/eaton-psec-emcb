@@ -88,14 +88,15 @@
       I1 = Math.sqrt(I1/numSamples);
       P1 = P1/numSamples;
       
+      var timestamp = response.data.capturedAt;
       console.log("V0 = " + V0 + ", I0 = " + I0 + ", P0 = " + P0);
-      socket.emit('got meter data',device_info,V0,I0,P0,V1,I1,P1);
+      socket.emit('got meter data',device_info,V0,I0,P0,V1,I1,P1,timestamp);
       pollAgainAfter5Sec(device_info,socket);
     });
   }
   
   app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/emcb.html');
+    res.sendFile(__dirname + '/emcb_test.html');
   });
   
   io.on('connection', (socket) => {

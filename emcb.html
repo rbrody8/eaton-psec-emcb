@@ -318,12 +318,49 @@
         var img_src = "images/closed_breaker_" + horz_or_vert + ".svg";
         image.setAttribute('src',img_src);
       });
-      socket.on('got meter data', function(device_info,V0,I0,P0,V1,I1,P1) {
+      
+      
+      var xData = [0];
+      var yData = [0];
+      const plot_data = [{
+        x:xData,
+        y:yData,
+        mode:"line"
+      }];
+      
+      // Define Layout
+      const plot_layout = {
+        xaxis: {range: [-1,1], title: "Time (s)"},
+        yaxis: {range: [-1,1], title: "Power (W)"},  
+        title: "Breaker Power vs Time"
+      };
+      Plotly.newPlot('plot_display', plot_data, plot_layout);
+      
+      socket.on('got meter data', function(device_info,V0,I0,P0,V1,I1,P1,timestamp) {
         var breakerDiv = document.getElementById(device_info.id);
         var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
         breakerLabel.remove();
         var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
         breakerDiv.appendChild(newBreakerLabel);
+        
+        // var breakerIndex = device_list.find((element) => {return element === device_info.id});
+        var breakerIndex = 0; // TO DO: plot all breaker powers, not just one of them
+        var plot_div = document.getElementById('plot_display');
+        var plot_data = plot_div.data[breakerIndex];
+        var last_ind = (plot_data.x).length - 1;
+        var last_x = plot_data.x[last_ind];
+        // var last_y = plot_data.y[last_ind];
+        var next_x = last_x + 1;
+        var next_y = P0;
+        plot_div.data.x.push(next_x);
+        plot_div.data.y.push(next_y);
+        var min_x = Math.min(...plot_div.data[0].x);
+        var max_x = Math.max(...plot_div.data[0].x);
+        var min_y = Math.min(...plot_div.data[0].y);
+        var max_y = Math.max(...plot_div.data[0].y);
+        plot_div.layout.xaxis.range = [min_x-1, max_x+1];
+        plot_div.layout.yaxis.range = [min_y-1, max_y+1];
+        Plotly.extendTraces('plot_display', {x: [[]], y: [[]]}, [0]); // a hack - I couldn't get Plotly.react or Plotly.update to work, but I accidentally got this to work instead
       });
       
       
@@ -337,26 +374,7 @@
       // });
       // udp_socket.bind(8085);
       
-      // testing plotting
-      const xArray = [50,60,70,80,90,100,110,120,130,140,150];
-      const yArray = [7,8,8,9,9,9,10,11,14,14,15];
       
-      // Define Data
-      const data = [{
-        x:xArray,
-        y:yArray,
-        mode:"markers"
-      }];
-      
-      // Define Layout
-      const layout = {
-        xaxis: {range: [40, 160], title: "Square Meters"},
-        yaxis: {range: [5, 16], title: "Price in Millions"},  
-        title: "House Prices vs. Size"
-      };
-      
-      // Display using Plotly
-      Plotly.newPlot("plot_display", data, layout);
     </script>
   </body>
 </html>

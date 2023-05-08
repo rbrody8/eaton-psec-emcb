@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+    <link rel="stylesheet" href="emcb.css">
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script> 
+  </head>
+  <body>
+    <div id='main_display'>
+      <button id="waves">Get Waveform</button>
+      <div id='plot_display' style='display:inline-block'></div>
+    </div>
+    
+    <script>
+      // USEFUL VARIABLES
+      var horizontal = true;
+
+      // GET WAVEFORMS BUTTON
+      var xData = [0,1];
+      var yData = [1,2];
+      const plot_data = [{
+        x:xData,
+        y:yData,
+        mode:"line"
+      }];
+      
+      // Define Layout
+      const plot_layout = {
+        xaxis: {range: [-1,2], title: "Time (s)"},
+        yaxis: {range: [0,3], title: "Power (W)"},  
+        title: "Breaker Power vs Time"
+      };
+      Plotly.newPlot('plot_display', plot_data, plot_layout)
+      var waves = document.getElementById('waves');
+      waves.addEventListener('click', function(e) {
+        // Define Data
+        var plot_div = document.getElementById('plot_display');
+        var new_data = plot_div.data[0];
+        var last_ind = (new_data.x).length - 1;
+        var last_x = new_data.x[last_ind];
+        var last_y = new_data.y[last_ind];
+        var next_x = last_x + 1;
+        var next_y = last_y + 1;
+        plot_div.data[0].x.push(next_x);
+        plot_div.data[0].y.push(next_y);
+        // plot_div.layout.xaxis.range = [-1, next_x + 1];
+        // plot_div.layout.yaxis.range = [0, next_y + 1];
+        var min_x = Math.min(...plot_div.data[0].x);
+        var max_x = Math.max(...plot_div.data[0].x);
+        var min_y = Math.min(...plot_div.data[0].y);
+        var max_y = Math.max(...plot_div.data[0].y);
+        plot_div.layout.xaxis.range = [min_x-1, max_x+1];
+        plot_div.layout.yaxis.range = [min_y-1, max_y+1];
+        Plotly.extendTraces('plot_display', {x: [[]], y: [[]]}, [0]);
+      });
+      
+      
+    </script>
+  </body>
+</html>
