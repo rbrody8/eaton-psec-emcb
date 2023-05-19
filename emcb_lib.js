@@ -224,6 +224,10 @@ async function getAPIAuthToken(app_info) {
       // store new authentication token in app_info after it's arrived
       app_info.auth = auth_info_obj;
       return app_info;
+        //  app_info.auth = {
+        //    'token': auth_token_str
+        //    'expiresAt': expiration_str_ISO_8601
+        //  }
     });
     // return a promise, and chain execute code after this function finishes by 
     // using .then() on the returned promise.
@@ -267,6 +271,10 @@ async function getOrgAuthToken(app_info, org_info) {
     var auth_info_promise = auth_response_promise.then((auth_info_obj) => {
       org_info.auth = auth_info_obj;
       return org_info;
+        //  org_info.auth = auth_info_obj = {
+        //    'token': auth_token_str
+        //    'expiresAt': expiration_str_ISO_8601
+        //  }
     });
     return auth_info_promise;
   }
@@ -633,8 +641,7 @@ Inputs:
 
 
 Outputs:
-- A promise that resovles into a array of 'org_info' objects, where each 
-  element in the array has all the fields in the 'org_info' object listed above.
+- None: the function only prints to console.
   
 Module Dependencies (defined at the beginning of the EMCB module):
  - axios: a promised-based HTTP client (TCP server)
@@ -658,6 +665,26 @@ async function listOrgs(app_info) {
   });
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Get all the resource quotas for the Application (i.e. 'app_info' object).
+
+Eaton EMCB API Function Implementation:
+- 'Get Resource Quotas for an Application'
+  HTTP URL: https://api.em.eaton.com/api/v1/resourceQuotas
+  API info: https://api.em.eaton.com/docs#operation/getResourceQuotas
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+
+
+Outputs:
+- None: the function only prints to console.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function getQuotas(app_info) {
   var auth_promise = getAPIAuthToken(app_info);
 
@@ -679,6 +706,28 @@ async function getQuotas(app_info) {
   
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Retrieves assignable roles.
+- (Used for inviting installers)
+
+Eaton EMCB API Function Implementation:
+- 'Get Assignable Roles'
+  HTTP URL: https://api.em.eaton.com/api/v1/roles
+  API info: https://api.em.eaton.com/docs#operation/getRoles
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+
+
+Outputs:
+- roles_promise: a promise that resolves into an Array of roles
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function getRoles(app_info, org_info) {
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
   
@@ -693,11 +742,49 @@ async function getRoles(app_info, org_info) {
         "Content-Type": "application/json"
       }
     };
-    return axios(request).then((response) => {return (response.data.data);});
+    return axios(request).then((response) => {
+      return (response.data.data);
+        // {
+        //     "data": [{
+        //         "id": "ee4c3c74-ab67-8fa8-47c7-947167799051",
+        //         "name": "Installer"
+        //     }]
+        // }
+    });
   });
   return roles_promise;
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Assigns a role to a user.
+- If the user has not yet created an EM account through the install app, 
+  this API creates a "pending" user role, that is activated when the user
+  creates and verifies their account. Otherwise, the user role is activated
+  immediately through this API.
+
+Eaton EMCB API Function Implementation:
+- 'Assign Role to User'
+  HTTP URL: https://api.em.eaton.com/api/v1/userRoles
+  API info: https://api.em.eaton.com/docs#operation/postUserRoles
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- installer_info: <Object>  Object describing who the installer is and what 
+                            organization to add them to with the following
+                            properties:
+    .email: "email address as a string",
+    .roleId: "string of role ID for installer returned from getRoles()",
+    .organizationId: "org_info.id"
+
+Outputs:
+- None: important installer info is saved to a .json file
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function inviteInstaller(app_info, org_info, installer_info) {
   // locationId can be: 1) an organization ID to allow
   // the installer to add new addresses, add new equipment
@@ -707,6 +794,10 @@ async function inviteInstaller(app_info, org_info, installer_info) {
   // allow to only allow the installer to commission new devices.
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
   var invite_promise = org_auth_promise.then((org_info) => {
+    // check if a person has already been invited as an installer by checking
+    // if a .json file with their info already exists.
+    // TO DO: improve this by checking who has already been installed using
+    // the API isntead of .json files.
     var folder = process.cwd();
     var installerFiles = filterJSON(folder,"installer");
     var numInstallers = installerFiles.length;
@@ -723,6 +814,7 @@ async function inviteInstaller(app_info, org_info, installer_info) {
       console.log(installer_info.email + " is already an installer!");
       return;
     } else {
+      // installer not already invited - so invite them
       var request = {
         "method": "POST",
         "url": "https://api.em.eaton.com/api/v1/userRoles",
@@ -735,7 +827,22 @@ async function inviteInstaller(app_info, org_info, installer_info) {
       };
       request.data = installer_info;
       var response_promise = axios(request).then((response) => {
+        // saving installer info
         installer_info = response.data.data;
+            // {
+            //     "installer_info": {
+            //         "id": "37086961-615f-4b4b-aeec-bfc433bd8c87",
+            //         "email": "email address from installer_info",
+            //         "roleId": "roleId from installer_info",
+            //         "organizationId": "orgizationId from installer_info",
+            //         "status": "active",
+            //         "inviteType": "email"
+            //     }
+            // }
+            
+        // info is saved in a file name "installer<j>.json", where j increments
+        // as new installers are invited/saved. this while loops finds the next
+        // avaiable <j>
         var j = 0;
         while (fileSystem.existsSync('installer'+j+'.json')) {
           j = j+1;
@@ -755,8 +862,37 @@ async function inviteInstaller(app_info, org_info, installer_info) {
   return invite_promise;
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Deletes a user role.
+- This API deletes the user role regardless of its status ('pending' or
+  'active').
+- If the user role has an 'inviteType' of 'inviteCode', then the associated
+  user acceptance will also be cleared.
+
+Eaton EMCB API Function Implementation:
+- 'Remove Role from User'
+  HTTP URL: https://api.em.eaton.com/api/v1/userRoles
+  API info: https://api.em.eaton.com/docs#operation/deleteUserRoles
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- installer_info: <Object>  Object describing who the installer is and what 
+                            organization to add them to with the following
+                            properties:
+    .email: "email address as a string",
+    .roleId: "string of role ID for installer returned from getRoles()",
+    .organizationId: "org_info.id"
+
+Outputs:
+- None
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function deleteInstaller(app_info, org_info, installer_info) {
-  // WARNING - YOU MUST DELETE THE CORRESPONDING installer.json MANUALLY
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
   org_auth_promise.then((org_info) => {
     var request = {
@@ -772,14 +908,39 @@ async function deleteInstaller(app_info, org_info, installer_info) {
     request.data = installer_info;
     
     axios(request).then((response) => {
-      fileSystem.unlinkSync(installer_info.file_name);
+      fileSystem.unlinkSync(installer_info.file_name); // delete file in Node.js
       console.log("Installer removed, and " + installer_info.file_name + " has been deleted");
     });
   });
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Gets all assigned user roles and their status for an organization.
+
+Eaton EMCB API Function Implementation:
+- 'Get List of Roles Assigned'
+  HTTP URL: https://api.em.eaton.com/api/v1/userRoles
+  API info: https://api.em.eaton.com/docs#operation/getUserRoles
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- installer_info: <Object>  Object describing who the installer is and what 
+                            organization to add them to with the following
+                            properties:
+    .email: "email address as a string",
+    .roleId: "string of role ID for installer returned from getRoles()",
+    .organizationId: "org_info.id"
+
+Outputs:
+- None
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/  
 async function getInstallers(app_info, org_info, installer_info) {
-  // WARNING - YOU MUST DELETE THE CORRESPONDING installer.json MANUALLY
   var org_auth_promise = getOrgAuthToken(app_info, org_info);
   org_auth_promise.then((org_info) => {
     var request = {
@@ -796,10 +957,42 @@ async function getInstallers(app_info, org_info, installer_info) {
     
     axios(request).then((response) => {
       console.log(response.data.data);
+        // response.data.data: {
+        // 	"id": "bd4e5e4a-a443-4fa4-9eb6-b04b1dfdadcc",
+        // 	"status": "pending",
+        // 	"inviteType": "email",
+        // 	"email": "rmb147@pitt.edu",
+        // 	"roleId": "ee4c3c74-ab67-8fa8-47c7-947167799051",
+        // 	"organizationId": "a0321685-c724-42e9-a7fa-71fa0e276555",
+        // 	"file_name": "/var/lib/cloud9/emcb/repo/installer0.json"
+        // }
     });
   });
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Gets all assigned user roles and their status for an organization.
+
+Eaton EMCB API Function Implementation:
+- 'Get List of Roles Assigned'
+  HTTP URL:
+    With filter: https://api.em.eaton.com/api/v1/devices?$filter=${filter}
+    Without filter: https://api.em.eaton.com/api/v1/devices
+  API info: https://api.em.eaton.com/docs#operation/getDevices
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- filter:         <string>  Used to specify device(s) to search for  
+
+Outputs:
+- An array of objects, each containing info about a different commissioned device
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getDevices(app_info, org_info, filter="") {
   var url_str = "https://api.em.eaton.com/api/v1/devices";
   if (filter !== "") { 
@@ -819,25 +1012,82 @@ async function getDevices(app_info, org_info, filter="") {
       }
     };
     return axios(request).then((response) => { return response.data.data; });
+    // {
+    //     "data": [{
+    //             "id": "f4628c73-0c62-491a-9454-a4f1b08e98ef",
+    //             "locationId": "a5db611d-d845-4a0a-9580-72444593fdd2",
+    //             "hardwareType": "emcb",
+    //             "sku": "SUHJ8301",
+    //             "serialNumber": "30000e1c248a3f18"
+    //         },
+    //         {
+    //             "id": "2f088162-5b66-4bee-ad60-fd47b0c3017b",
+    //             "locationId": "a5db611d-d845-4a0a-9580-72444593fdd2",
+    //             "hardwareType": "ev-emcb",
+    //             "sku": "KSCV1289",
+    //             "serialNumber": "30000d3a152e2a80",
+    //             "chargerStationId": "etn-8675"
+    //         }
+    //     ]
+    // }
   });
   return request_promise;
 }
 
+
+/*******************************************************************************
+ * A wrapper for calling getDevices() with a filter to search by serial number.
+ * See getDevices() for details.
+*******************************************************************************/
 async function getDeviceBySN(app_info, org_info, SN_str) {
   var filter = `serialNumber eq '${SN_str}'`;
   return getDevices(app_info, org_info, filter);
 }
 
+
+/*******************************************************************************
+ * A wrapper for calling getDevices() with a filter to search for all devices
+ * at the location described by the locaiton ID stored in loc_ID_str.
+ * See getDevices() for details.
+*******************************************************************************/
 async function getDevicesByLocID(app_info, org_info, loc_ID_str) {
   var filter = `locationId eq '${loc_ID_str}'`;
   return getDevices(app_info, org_info, filter);
 }
 
+
+/*******************************************************************************
+ * A wrapper for calling getDevices() with a filter to search for all devices
+ * at the parent location location described by parent_loc_ID_str
+ * See getDevices() for details.
+*******************************************************************************/
 async function getDevicesByParentLocID(app_info, org_info, parent_loc_ID_str) {
   var filter = `ancestorLocationId eq '${parent_loc_ID_str}'`;
   return getDevices(app_info, org_info, filter);
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Get the device's remote handle position
+
+Eaton EMCB API Function Implementation:
+- 'Get Device Remote Handle Position'
+  HTTP URL: https://api.em.eaton.com/api/v1/devices/{deviceId}/breaker/remoteHandle/position
+  API info: https://api.em.eaton.com/docs#operation/getRemoteHandlePosition
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- deviceID:       <string>  The ID (from getDevices()) of the EMCB to control 
+
+Outputs:
+- A string representing the state of the breaker: "open" or "closed". Note
+  that the state of the manual handle is independent of the remote handle.
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getRemoteHandlePos(app_info, org_info, deviceID) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
 
@@ -856,10 +1106,36 @@ async function getRemoteHandlePos(app_info, org_info, deviceID) {
     };
     return axios(request).then((response) => {
         return response.data.data.position;
+    // {
+    //     "data": {
+    //         "position": "open"
+    //     }
+    // }
     });
   });
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Set the device's remote handle position
+
+Eaton EMCB API Function Implementation:
+- 'Get Device Remote Handle Position'
+  HTTP URL: https://api.em.eaton.com/api/v1/devices/{deviceId}/breaker/remoteHandle/position
+  API info: https://api.em.eaton.com/docs#operation/postRemoteHandlePosition
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- deviceID:       <string>  The ID (from getDevices()) of the EMCB to control 
+
+Outputs:
+- None
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function setBreaker(app_info, org_info, open_or_close, deviceID, reason) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
 
@@ -887,14 +1163,45 @@ async function setBreaker(app_info, org_info, open_or_close, deviceID, reason) {
   });
 }
 
+
+/******************************************************************************
+  A wrapper function for setBreaker() that specifically opens breakers. See
+  setBreaker() for documentation.
+******************************************************************************/ 
 async function openBreaker(app_info, org_info, deviceID, reason) {
   return setBreaker(app_info, org_info, "open", deviceID, reason);
 }
 
+
+/******************************************************************************
+  A wrapper function for setBreaker() that specifically closes breakers. See
+  setBreaker() for documentation.
+******************************************************************************/ 
 async function closeBreaker(app_info, org_info, deviceID, reason) {
   return setBreaker(app_info, org_info, "close", deviceID, reason);
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Gets the full details of a waveform for a device.
+
+Eaton EMCB API Function Implementation:
+- 'Get waveform details for a device'
+  HTTP URL: https://api.em.eaton.com/api/v1/devices/{deviceId}/waveforms/{waveformId}
+  API info: https://api.em.eaton.com/docs#operation/getWaveform
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- deviceID:       <string>  The ID (from getDevices()) of the EMCB to control 
+
+Outputs:
+- An object containing the waveform data
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getWaveforms(app_info, org_info, deviceID) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
   var request_promise = org_auth_promise.then((org_info) => {
@@ -912,30 +1219,55 @@ async function getWaveforms(app_info, org_info, deviceID) {
     };
     return axios(request).then(function(response){
       return response.data.data;
-      // var xValues = Array.from({length: response.data.data.numSamples}, (e, i)=> i);
-      // var yValues = response.data.data.mVp1;
-      
-      // // Define Data
-      // var data = [{
-      //   x: xValues,
-      //   y: yValues,
-      //   mode:"markers",
-      //   type:"scatter"
-      // }];
-      
-      // // Define Layout
-      // var layout = {
-      //   xaxis: {range: [40, 160], title: "Square Meters"},
-      //   yaxis: {range: [5, 16], title: "Price in Millions"},
-      //   title: "House Prices vs. Size"
-      // };
-      
-      // plotly.newPlot("myPlot", data, layout);
+          // {
+          //     "data": {
+          //        "id": "d8778c58-5a90-487d-8583-6d568a8d2a2d",
+          //        "deviceId": "d51f61c3-a4a6-43d2-b3f1-252c303b84b9",
+          //        "numSamples": 10,
+          //        "triggers": [
+          //          "Immediate",
+          //          "Phase 0 Overcurrent"
+          //        ],
+          //        "shortestTrigger": "Immediate",
+          //        "capturedAt": "2020-10-12T13:20:37.443Z",
+          //        "captureWindowDuration": 1000,
+          //        "timeAfterTrigger": 100,
+          //        "sampleDelta": 100,
+          //        "data": {
+          //          "mVp0": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+          //          "mAp0": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+          //          "mVp1": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ],
+          //          "mAp1": [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ]
+          //      },
+          //      "type": "waveform"
+          // }
     });
   });
   return request_promise;
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Retrieves the latest Meter Telemetry data pushed from the device.
+
+
+Eaton EMCB API Function Implementation:
+- 'Get Most Recent Meter Telemetry Data'
+  HTTP URL: https://api.em.eaton.com/api/v1/devices/{deviceId}/data/telemetry/meter/latest
+  API info: https://api.em.eaton.com/docs#operation/getLatestDeviceMeterTelemetry
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- deviceID:       <string>  The ID (from getDevices()) of the EMCB to control 
+
+Outputs:
+- An object containing the waveform data
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function readMeter(app_info, org_info, deviceID) {
   // I believe the meter info only updates about every 5 minutes
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
@@ -953,10 +1285,46 @@ async function readMeter(app_info, org_info, deviceID) {
         }
     };
     return axios(request).then((response) => {return response.data.data;});
+    /* 
+    {
+      "data": {
+        "currentA": {
+          "val": 0,
+          "min": 0,
+          "max": 0,
+          "avg": 0
+        },
+        "voltageAN": {
+          "val": 0,
+          "min": 0,
+          "max": 0,
+          "avg": 0
+        },
+        "frequency": {
+          "val": 0,
+          "min": 0,
+          "max": 0,
+          "avg": 0
+        },
+        "energy": {...},
+        "energyDelta": {...},
+        "currentB": {...},
+        "voltageBN": {...},
+        "voltageAB": {...},
+        "hwSamples": 0,
+        "ts": 0
+        }
+      }
+    */
   });
   return org_auth_promise;
 }
 
+
+/******************************************************************************
+ * This funciton simply reads in a .json file stored in 'filename' and stores
+ * the data in the an Object.
+ *****************************************************************************/
 function readJSON(filename) {
   if (!(fileSystem.existsSync(filename))){
     throw(new Error('Error retreving stored app info: '
@@ -973,6 +1341,11 @@ function readJSON(filename) {
   }
 }
 
+
+/******************************************************************************
+ * This funciton simply finds all files in 'folder' with filenames that begin
+ * with 'filePrefix'.
+ *****************************************************************************/
 function filterJSON(folder, filePrefix="") {
   var files = fileSystem.readdirSync(folder);
   var filteredFiles = files.filter((file) => {
@@ -989,13 +1362,17 @@ function filterJSON(folder, filePrefix="") {
   return filteredFiles;
 }
 
+
+/******************************************************************************
+* this function checks if authorization token has expired yet.
+* auth_info object must have a field named 'expiresAt' in ISO 8601 format as
+* returned by the Eaton EMCB API, or else the function returns false. 
+* authorization tokens that expire in less than 'safety_factor' miliseconds
+* is considered invalid to account for latency. the default value for 
+* 'safety_factor' is equivalent to 1 minute'.
+ *****************************************************************************/
 function isAuthValid(auth_info, safety_factor = 60*1e3) { 
-  // this function checks if authorization token has expired yet.
-  // auth_info object must have a field named 'expiresAt' in ISO 8601 format as
-  // returned by the Eaton EMCB API, or else the function returns false. 
-  // authorization tokens that expire in less than 'safety_factor' miliseconds
-  // is considered invalid to account for latency. the default value for 
-  // 'safety_factor' is equivalent to 1 minute'.
+
 
   // check for presence of authorization token info object
   var inputExists = (typeof auth_info !== 'undefined');
@@ -1012,10 +1389,16 @@ function isAuthValid(auth_info, safety_factor = 60*1e3) {
     return false;
   }
   
+  // check if auth_info.token expires in less than a minute
   var one_min_in_milisec = 60*1e3;
   return isExpired(auth_info,safety_factor = one_min_in_milisec) === false;
 } 
 
+
+/******************************************************************************
+* This function checks if an authentication token or API key is expired by
+* using the Date package to compare times in ISO 8601 format.
+ *****************************************************************************/
 function isExpired(token_or_key, safety_factor=60*1e3) {
   // code for comparing ISO 8601 times is from:
   //    https://stackoverflow.com/questions/18023857/compare-2-iso-8601-timestamps-and-output-seconds-minutes-difference
@@ -1031,34 +1414,39 @@ function isExpired(token_or_key, safety_factor=60*1e3) {
   }
 }
 
+
+/******************************************************************************
+* a recurve function that performs a deep comparison of objects
+* javascript strict equality "===" only checks if object pointers are
+* are equal, but we want something that checks if two objects have
+* all of the same keys and all of the same values sotred at each key.
+* this type of comparison is known as a "deep comparison" in computer
+* science, and is implemented here recursivly incase the input objects
+* contain nested objects within them.
+  
+* code from the following website:
+* https://raphacmartin.medium.com/deep-equality-in-javascript-objects-1eea8abb3649
+ *****************************************************************************/
 function isEqualObjects(obj_a, obj_b) {
-  // a recurve function that performs a deep comparison of objects
-  // javascript strict equality "===" only checks if object pointers are
-  // are equal, but we want something that checks if two objects have
-  // all of the same keys and all of the same values sotred at each key.
-  // this type of comparison is known as a "deep comparison" in computer
-  // science, and is implemented here recursivly incase the input objects
-  // contain nested objects within them.
-  
-  // code from the following website:
-  // https://raphacmartin.medium.com/deep-equality-in-javascript-objects-1eea8abb3649
-  
   // if the number of keys in each object is different, return false
   // without requiring recursive calls
   if (Object.keys(obj_a).length !== Object.keys(obj_b).length) {
     return false;
   }
   
+  // check all key-value pairs in obj_a and obj_b and see if they are equal.
   for (const key in obj_a) {
     const a_value = obj_a[key];
     const b_value = obj_b[key];
     
-    // if the value is an object, check if they're different objects
+    // if the value is an object, check if they're different objects recursively
     var a_is_object = a_value instanceof Object;
     var not_equal_objects = true;
     if (a_is_object) {
-      not_equal_objects = !isEqualObjects(a_value, b_value);
+      not_equal_objects = !isEqualObjects(a_value, b_value); 
     }
+    
+    // recursive call: base case is a_is_object === false, so...
     var not_equal_values = a_value !== b_value;
     var condition1 = (a_is_object && not_equal_objects); // b must also be an object for equal_objects to return true
     var condition2 = (!a_is_object && not_equal_values); // b must also not be an object for equal_values to be true
@@ -1069,6 +1457,27 @@ function isEqualObjects(obj_a, obj_b) {
   return true;
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Get device connection state.
+
+Eaton EMCB API Function Implementation:
+- 'Get waveform details for a device'
+  HTTP URL: https://api.em.eaton.com/api/v1/devices/{deviceId}/device/metadata/isConnected
+  API info: https://api.em.eaton.com/docs#operation/getDeviceConnectionState
+
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+- org_info:       <Object>  See above - org_info.auth.token needed
+- deviceID:       <string>  The ID (from getDevices()) of the EMCB to control 
+
+Outputs:
+- An object containing the waveform data
+  
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function isConnected(app_info,org_info,deviceID) {
   var org_auth_promise = getOrgAuthToken(app_info,org_info);
 
@@ -1087,10 +1496,35 @@ async function isConnected(app_info,org_info,deviceID) {
     };
     return axios(request).then((response) => {
         return response.data.data.isConnected;
+          // {
+          //     "data": {
+          //         "isConnected": true,
+          //         "ts": 1607025957
+          //     }
+          // }
     });
   });
 }
 
+
+/******************************************************************************
+Description (from API documentation):
+- Retrieve multiple organizations.
+
+Eaton EMCB API Function Implementation:
+- 'Get Organizations'
+  HTTP URL: https://api.em.eaton.com/api/v1/organizations
+  API info: https://api.em.eaton.com/docs#operation/getOrganizations
+Inputs:
+- app_info:       <Object>  See above - all fields required.
+
+Outputs:
+- An array of objects that each contain the info stored in org_info for each 
+  organization created for the Application described by 'app_info'.
+
+Module Dependencies (defined at the beginning of the EMCB module):
+ - axios: a promised-based HTTP client (TCP server)
+******************************************************************************/ 
 async function getOrgs(app_info) {
   var api_auth_promise = getAPIAuthToken(app_info);
 
@@ -1107,6 +1541,21 @@ async function getOrgs(app_info) {
     };
     return axios(request).then((response) => {
         return response.data.data;
+        //  data": [{
+        //      "id": "string",
+        //      "name": "string",
+        //      "description": "string",
+        //      "permissions": [
+        //        "create:location"
+        //      ],
+        //      "serviceAccount": {
+        //        "clientId": "string",
+        //        "secrets": [ {
+        //            "name": "string",
+        //            "expiry": "2019-08-24T14:15:22Z"
+        //        } ]
+        //      }
+        //  }]
     });
   });
 }
@@ -1120,6 +1569,11 @@ async function getOrgs(app_info) {
 // relevant code here rather than importing the depricated module here.
 // Constants are from the 'emcbUDPconstants.js' module:
 // https://github.com/EatonEM/emcb-udp-master/blob/master/lib/emcbUDPconstants.js
+// After attempting to do this on my own with the functions below, I suggest
+// trying to use the module in the above github link instead.
+// AFTER ATTEPMTING TO DO THIS ONL MY OWN WITH THE FUNCTIONS BELOW, I SUGGEST
+// TRYIGN TO USE THE MODULE IN THE ABOVE GITHUB LINK INSTEAD. THE CODE BELOW
+// IS NOT COMPLETE. SOME FUNCTIONS WILL WORK, OTHERS WON'T.
 const EMCB_UDP_MESSAGE_CODE_GET_NEXT_SEQUENCE_NUMBER = 0x0000;
 const EMCB_UDP_MESSAGE_CODE_GET_DEVICE_DEBUG_DATA = 0x00FE;
 const EMCB_UDP_MESSAGE_CODE_GET_DEVICE_STATUS = 0x00FF;

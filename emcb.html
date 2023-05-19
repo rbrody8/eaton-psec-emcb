@@ -56,8 +56,6 @@
     <script>
       // USEFUL VARIABLES
       var socket = io();
-      // var udp = require('dgram');
-      // var udp_socket = udp.createSocket('udp4');
       var device_list = [];
       var current_device_id = NaN;
       var device_radio_name = "device_list";
@@ -190,6 +188,40 @@
       var waves = document.getElementById('waves');
       var update_device_list = document.getElementById('update_device_list');
       
+      var xData = [0];
+      var yData = [0];
+      const plot_data_1 = {
+        x:xData,
+        y:yData,
+        mode:"line"
+      };
+      const plot_data_2 = {
+        x:xData,
+        y:yData,
+        mode:"line"
+      };
+      const plot_data_3 = {
+        x:xData,
+        y:yData,
+        mode:"line"
+      };
+      const plot_data_4 = {
+        x:xData,
+        y:yData,
+        mode:"line"
+      };
+      var all_plot_data = [plot_data_1,plot_data_2,plot_data_3,plot_data_4];
+      
+      // Define Layout
+      var plot_layout = {
+        xaxis: {range: [-1,1], title: "Time (s)"},
+        yaxis: {range: [-1,1], title: "Power (W)"},  
+        title: "Breaker Power vs Time"
+      };
+      // Plotly.newPlot('plot_display', plot_data, plot_layout);
+      // console.log(all_plot_data);
+      var plotly_promise = Plotly.newPlot('plot_display', all_plot_data, plot_layout);
+      
       // RADIO BUTTONS TO SELECT BREAKER BY SERIAL NUMBER (SN)
       var device_form = document.getElementById('device_form');
       disableButtons();
@@ -320,60 +352,55 @@
       });
       
       
-      var xData = [0];
-      var yData = [0];
-      const plot_data = [{
-        x:xData,
-        y:yData,
-        mode:"line"
-      }];
-      
-      // Define Layout
-      const plot_layout = {
-        xaxis: {range: [-1,1], title: "Time (s)"},
-        yaxis: {range: [-1,1], title: "Power (W)"},  
-        title: "Breaker Power vs Time"
-      };
-      Plotly.newPlot('plot_display', plot_data, plot_layout);
-      
       socket.on('got meter data', function(device_info,V0,I0,P0,V1,I1,P1,timestamp) {
-        var breakerDiv = document.getElementById(device_info.id);
-        var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
-        breakerLabel.remove();
-        var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
-        breakerDiv.appendChild(newBreakerLabel);
-        
-        // var breakerIndex = device_list.find((element) => {return element === device_info.id});
-        // https://plotly.com/javascript/
-        var breakerIndex = 0; // TO DO: plot all breaker powers, not just one of them
-        var plot_div = document.getElementById('plot_display');
-        var plot_data = plot_div.data[breakerIndex];
-        var last_ind = (plot_data.x).length - 1;
-        var last_x = plot_data.x[last_ind];
-        // var last_y = plot_data.y[last_ind];
-        var next_x = last_x + 1;
-        var next_y = P0;
-        plot_div.data.x.push(next_x);
-        plot_div.data.y.push(next_y);
-        var min_x = Math.min(...plot_div.data[0].x);
-        var max_x = Math.max(...plot_div.data[0].x);
-        var min_y = Math.min(...plot_div.data[0].y);
-        var max_y = Math.max(...plot_div.data[0].y);
-        plot_div.layout.xaxis.range = [min_x-1, max_x+1];
-        plot_div.layout.yaxis.range = [min_y-1, max_y+1];
-        Plotly.extendTraces('plot_display', {x: [[]], y: [[]]}, [0]); // a hack - I couldn't get Plotly.react or Plotly.update to work, but I accidentally got this to work instead
+        console.log("on 'got meter data'");
+        console.log(device_info.id);
+        console.log(P0);
+        plotly_promise = plotly_promise.then(function() {
+          console.log("promise resolved");
+          var breakerDiv = document.getElementById(device_info.id);
+          var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
+          breakerLabel.remove();
+          var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
+          breakerDiv.appendChild(newBreakerLabel);
+          
+          // https://plotly.com/javascript/
+          var breakerIndex = device_list.findIndex(function(element) { 
+            return element.id === device_info.id;
+          });
+          // console.log(device_list);
+          // console.log(device_info.id);
+          // console.log(breakerIndex);
+          // var breakerIndex = 0; // TO DO: plot all breaker powers, not just one of them
+          var plot_div = document.getElementById('plot_display');
+          var plot_data = plot_div.data[breakerIndex];
+          console.log(breakerIndex);
+          console.log(plot_div.data);
+          console.log(plot_data);
+          var last_ind = (plot_data.x).length - 1;
+          var last_x = plot_data.x[last_ind];
+          var next_x = last_x + 1;
+          var next_y = P0;
+          plot_data.x.push(next_x);
+          plot_data.y.push(next_y);
+          if (next_x >= plot_div.layout.xaxis.range[1]){
+            plot_div.layout.xaxis.range[1] = next_x + 1;
+          }
+          if (next_y >=  plot_div.layout.yaxis.range[1]){
+            plot_div.layout.yaxis.range[1] = next_y + 1;
+          }
+          if (next_y <=  plot_div.layout.yaxis.range[0]){
+            plot_div.layout.yaxis.range[0] = next_y - 1;
+          }
+          // var min_x = Math.min(...plot_data.x);
+          // var max_x = Math.max(...plot_data.x);
+          // var min_y = Math.min(...plot_data.y);
+          // var max_y = Math.max(...plot_data.y);
+            
+          // Plotly.extendTraces('plot_display', {x: [[]], y: [[]]}, [0]); // a hack - I couldn't get Plotly.react or Plotly.update to work, but I accidentally got this to work instead
+          Plotly.redraw('plot_display'); // a hack - I couldn't get Plotly.react or Plotly.update to work, but I accidentally got this to work instead
+        });
       });
-      
-      
-      // meter.addEventListener('click', function(e) {
-      //   socket.emit('read meter', current_device_id)
-      // });
-      
-      // udp_socket.on('message',function(msg,info){
-      //   console.log('Data received from server : ' + msg.toString());
-      //   console.log('Received %d bytes from %s:%d\n',msg.length, info.address, info.port);
-      // });
-      // udp_socket.bind(8085);
       
       
     </script>

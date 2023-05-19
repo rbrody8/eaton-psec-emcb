@@ -18,39 +18,66 @@
       // GET WAVEFORMS BUTTON
       var xData = [0,1];
       var yData = [1,2];
-      const plot_data = [{
+      const plot_data_1 = {
         x:xData,
         y:yData,
         mode:"line"
-      }];
+      };
+      
+      xData = [0,1];
+      yData = [3,4];
+      const plot_data_2 = {
+        x:xData,
+        y:yData,
+        mode:"line"
+      };
+      const plot_data = [plot_data_1, plot_data_2];
       
       // Define Layout
       const plot_layout = {
         xaxis: {range: [-1,2], title: "Time (s)"},
-        yaxis: {range: [0,3], title: "Power (W)"},  
+        yaxis: {range: [0,5], title: "Power (W)"},  
         title: "Breaker Power vs Time"
       };
       Plotly.newPlot('plot_display', plot_data, plot_layout)
       var waves = document.getElementById('waves');
+      var test = 0;
       waves.addEventListener('click', function(e) {
         // Define Data
         var plot_div = document.getElementById('plot_display');
-        var new_data = plot_div.data[0];
+        console.log(plot_div.data);
+        var new_data = plot_div.data[test];
         var last_ind = (new_data.x).length - 1;
         var last_x = new_data.x[last_ind];
-        var last_y = new_data.y[last_ind];
+        var last_y1 = new_data.y[last_ind];
         var next_x = last_x + 1;
-        var next_y = last_y + 1;
-        plot_div.data[0].x.push(next_x);
-        plot_div.data[0].y.push(next_y);
+        var next_y1 = last_y1 + 1;
+        plot_div.data[test].x.push(next_x);
+        plot_div.data[test].y.push(next_y1);
+        if (test === 0){
+          test = 1;
+        } else {
+          test = 0;
+        }
+        
+        // var new_data = plot_div.data[1];
+        // var last_ind = (new_data.x).length - 1;
+        // var last_x = new_data.x[last_ind];
+        // var last_y2 = new_data.y[last_ind];
+        // var next_x = last_x + 1;
+        // var next_y2 = last_y2 + 1;
+        // plot_div.data[1].x.push(next_x);
+        // plot_div.data[1].y.push(next_y2);
+        
         // plot_div.layout.xaxis.range = [-1, next_x + 1];
         // plot_div.layout.yaxis.range = [0, next_y + 1];
-        var min_x = Math.min(...plot_div.data[0].x);
-        var max_x = Math.max(...plot_div.data[0].x);
-        var min_y = Math.min(...plot_div.data[0].y);
-        var max_y = Math.max(...plot_div.data[0].y);
+        var min_x = Math.min(...plot_div.data[0].x,...plot_div.data[1].x);
+        var max_x = Math.max(...plot_div.data[0].x,...plot_div.data[1].x);
+        var min_y = Math.min(...plot_div.data[0].y,...plot_div.data[1].y);
+        var max_y = Math.max(...plot_div.data[0].y,...plot_div.data[1].y);
         plot_div.layout.xaxis.range = [min_x-1, max_x+1];
-        plot_div.layout.yaxis.range = [min_y-1, max_y+1];
+        plot_div.layout.yaxis.range = [0, max_y+1];
+        // Plotly.react('plot_display',plot_div.data,plot_div.layout);
         Plotly.extendTraces('plot_display', {x: [[]], y: [[]]}, [0]);
       });
       

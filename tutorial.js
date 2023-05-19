@@ -34,14 +34,13 @@
     var get_roles_promise = emcb.getRoles(app_info,org_info);
     
     // STEP 8: INVITE INSTALLER
-    get_roles_promise.then(function(role_ids) {
-        var installer_role_id = role_ids[0]; // there is only 1 role ID available
+    get_roles_promise.then(function(response) {
         var installer_info = {
-            roleId: installer_role_id,
-            name: 'Example Name',
-            email: 'example_email@eaton.com',
-            organizationId: "a0321685-c724-42e9-a7fa-71fa0e276555"
+            id: response[0].id,
+            name: 'Ryan Brody',
+            email: 'rmb147@pitt.edu',
         };
+
         emcb.inviteInstaller(app_info, org_info, installer_info);
     });
     
@@ -58,23 +57,36 @@
         console.log();
         console.log();
         
-        // STEP 11: CONTROL A DEVICE:
-        // turn all breakers on (i.e. close them)
+        // STEP 11: CONTROL A DEVICE (here, turning all devices on/off as an example):
+        // turn all breakers off one at a time(i.e. open them)
+        console.log("Opening breakers...");
         var reason = 'tutorial demonstration';
-        var all_turn_on_promises = [];
-        for (var device_id in response) {
-            var new_on_promise = emcb.closeBreaker(app_info, org_info, device_id, reason);
-            all_turn_on_promises.push(new_on_promise);
+        var all_turn_off_promises = [];
+        for (var device_ind in response) {
+            var device_id = response[device_ind].id;
+            var new_on_promise = emcb.openBreaker(app_info, org_info, device_id, reason);
+            all_turn_off_promises.push(new_on_promise);
         }
         
-        // wait for all devices to turn on...
-        Promise.all(all_turn_on_promises).then(function() {
-            // ...then turn on all breakers off (i.e. open them)
-            for (var device_id in response) {
-                emcb.openBreaker(app_info, org_info, device_id, reason);
-            }
+        // wait for all devices to turn off...
+        Promise.all(all_turn_off_promises).then(function() {
+            // ...then turn on all breakers on (i.e. close them)
+            var ten_sec_in_ms = 10000;
+            console.log("All breakers are open. Waiting 10 seconds before reclosing breakers to avoid a 'Too Many Requests' error...");
+            emcb.asyncWait(ten_sec_in_ms).then(function() {
+                console.log("Reclosing breakers...");
+                emcb.getDevices(app_info, org_info).then(function(response) {
+                    var all_turn_on_promises = [];
+                    for (var device_ind in response) {
+                        var device_id = response[device_ind].id;
+                        var new_on_promise = emcb.closeBreaker(app_info, org_info, device_id, reason);
+                        all_turn_on_promises.push(new_on_promise);
+                    }
+                    Promise.all(all_turn_on_promises).then(function() {
+                        console.log("All breakers are closed again. Tutorial Complete!");
+                    });
+                });
+            });
         });
     });
-    
-    
 })();

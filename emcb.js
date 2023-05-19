@@ -6,11 +6,10 @@
   const { Server } = require("socket.io");
   const io = new Server(tcp_server);
   const emcb = require("./emcb_lib.js");
-  const fileSystem = require("fs");    // used for saving data to files
   const udp = require('dgram');
   const udp_socket = udp.createSocket('udp4');
-  const poll_imediately = false;
-  
+  const poll_imediately = true;
+
   const UDP_PORT = emcb.getUDPport(); // must be 32866 for EMCBs (spells "EATON" on keypad); hardcoded in EMCB firmware 
   const UDP_BROADCAST_IP = emcb.getBroadcastAddress(); // use ifconfig in beablebone terminal to find the broadcast IP address
   
@@ -27,31 +26,11 @@
   var org_info = emcb.readJSON(org_filename);
   
   
-    // io.on('read meter', (deviceInd) => {
-  //   var deviceID = devices[deviceInd].id;
-  //   console.log('reading meter for breaker ' + deviceID);
-  //   emcb.readMeter(app_info,org_info,deviceID);
-  // });
-
-  // body-parser is used to handle post requests, if you want to use post requests:
-  // https://stackoverflow.com/questions/55558402/what-is-the-meaning-of-bodyparser-urlencoded-extended-true-and-bodypar
-  // const bodyParser = require('body-parser');
-  // app.use(bodyParser.urlencoded({ extended: false }));
-  // app.use(bodyParser.json);
-  // app.post('/', (req, res) => {
-  //   res.sendFile(__dirname + '/emcb.html');
-  // });
-  
   async function resolveAfter5Sec() {
     var seconds = 5;
     var ms_per_s = 1000;
     var miliseconds = seconds*ms_per_s;
     return emcb.asyncWait(miliseconds);
-    // return new Promise(resolve => {
-    //   setTimeout(() => {
-    //     resolve('resolved');
-    //   }, 5000);
-    // });
   }
   
   function pollAgainAfter5Sec(device_info,socket) {
@@ -64,7 +43,6 @@
   function pollBreaker(device_info,socket) {
     console.log("polling device " + device_info.id);
     emcb.getWaveforms(app_info,org_info,device_info.id).then((response) => {
-
       var V0 = 0;
       var I0 = 0;
       var P0 = 0;
@@ -91,17 +69,17 @@
       var timestamp = response.data.capturedAt;
       console.log("V0 = " + V0 + ", I0 = " + I0 + ", P0 = " + P0);
       socket.emit('got meter data',device_info,V0,I0,P0,V1,I1,P1,timestamp);
-      pollAgainAfter5Sec(device_info,socket);
+      pollBreaker(device_info,socket);
     });
   }
   
   app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/emcb_test.html');
+    res.sendFile(__dirname + '/emcb.html');
   });
   
   io.on('connection', (socket) => {
     console.log('a user connected');
-    
+
     socket.on('disconnect', () => {
       console.log('user disconnected');
     });
@@ -160,14 +138,17 @@
       });
     });
     
+    
     // start polling breakers
     if (poll_imediately) {
       emcb.getDevices(app_info,org_info).then((device_list) => {
-        // for (let i=0; i<device_list.length; i=i+1){
-        //   var device = device_list[i];
-        //   pollBreaker(device, socket);
-        // }
-        pollBreaker(device_list[0], socket);
+        for (let i=0; i<device_list.length; i=i+1){
+          if (i !== 0) {
+            continue;
+          }
+          var device = device_list[i];
+          pollBreaker(device, socket);
+        }
       });
     }
     
