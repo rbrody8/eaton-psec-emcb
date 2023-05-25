@@ -3,15 +3,14 @@
 // will recognize.
 (function main() {
   const fileSystem = require("fs");    // used for saving org data to app[x].JSON file
-  const emcb = require("./emcb_lib.js"); // custom module wit common functions used when interacting with Eaton EMCB API
 
   // For application "AsyncTest":
   var filename = "Eaton_PSEC_EMCBs.json"; // MUST BE .JSON FORMAT!! For info about JSON format: https://www.w3schools.com/whatis/whatis_json.asp
   var output = {
-    api_key: "4a9738d35f7e4708bd9acbda32a7b7dc",
-    client_id: "4b3e1f63-5369-4a70-b3f1-81c938e425d1",
-    client_secret1: "dJrGuPqRWO6z0-gJ192hsKLBLeJmw1g7keydwN2o",
-    client_secret2: "XZatuaV_TsexoHxgWqNjlHwzoxk8Q0eacieoy7Tr"
+    api_key: "3550db6ae64b45839b66850969b628a9",
+    client_id: "d38f4f39-8cd2-4df1-b440-6b38894db3be",
+    client_secret1: "hwaT9412yMbceDCluIfOF8vfV8hhFRpA-SnRXG6b",
+    client_secret2: "wSmjlGizUpy45ew-9V3Ge6DoAe32Xtdo8mPzzOpB"
   };
 
   var len = filename.length;

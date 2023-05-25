@@ -359,6 +359,7 @@
         plotly_promise = plotly_promise.then(function() {
           console.log("promise resolved");
           var breakerDiv = document.getElementById(device_info.id);
+          console.log(breakerDiv);
           var breakerLabel = breakerDiv.querySelector('.breakerLabelHorz,.breakerLabelVert');
           breakerLabel.remove();
           var newBreakerLabel = getBreakerLabel(device_info.serialNumber,V0,I0,P0);
@@ -368,9 +369,9 @@
           var breakerIndex = device_list.findIndex(function(element) { 
             return element.id === device_info.id;
           });
-          // console.log(device_list);
-          // console.log(device_info.id);
-          // console.log(breakerIndex);
+          console.log(device_list);
+          console.log(device_info.id);
+          console.log(breakerIndex);
           // var breakerIndex = 0; // TO DO: plot all breaker powers, not just one of them
           var plot_div = document.getElementById('plot_display');
           var plot_data = plot_div.data[breakerIndex];

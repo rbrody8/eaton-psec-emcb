@@ -1,0 +1,52 @@
+{
+	"id": "b0398fa4-b8ca-481c-a6b7-901ae50fba5d",
+	"name": "Eaton PSEC",
+	"description": "Eaton Power Systems Experience Center (Warrendale)",
+	"serviceAccount": {
+		"clientId": "a327996f-0358-41ca-9560-4be0d80c5df3",
+		"secrets": [
+			{
+				"name": "secret1",
+				"value": "FGXssLbIZoHLlihXYbIAKuFz_dC6_1dbAN8qnYWn",
+				"expiry": "2024-05-24T19:39:49Z"
+			},
+			{
+				"name": "secret2",
+				"value": "TvxytG1vPyWlyO62xqWwz_w3I99_MHFxo6qaJYLM",
+				"expiry": "2024-05-24T19:39:49Z"
+			}
+		]
+	},
+	"addresses": [
+		{
+			"id": "7af8b91d-6336-46e6-be0c-8a9909f11011",
+			"name": "PSEC Warrendale",
+			"description": "Eaton Power Systems Experience Center (Warrendale)",
+			"organizationId": "b0398fa4-b8ca-481c-a6b7-901ae50fba5d",
+			"contact": "Dan Carnovale",
+			"email": "DanielJCarnovale@Eaton.com",
+			"phone": "+1 412 716 6938",
+			"locationType": "address",
+			"address": {
+				"city": "Warrendale",
+				"state": "Pennsylvania",
+				"postalCode": "15086",
+				"street1": "130 Commonwealth Drive"
+			}
+		}
+	],
+	"panels": [
+		{
+			"id": "c7153b69-1e4b-4374-aa98-41d28b09d866",
+			"name": "Main Breaker Box",
+			"parentLocationId": "7af8b91d-6336-46e6-be0c-8a9909f11011",
+			"organizationId": "b0398fa4-b8ca-481c-a6b7-901ae50fba5d",
+			"locationType": "equipment"
+		}
+	],
+	"file_name": "/var/lib/cloud9/emcb/repo/org0.json",
+	"auth": {
+		"token": "eyJraWQiOiJZMkdOb1kybms3VkctWHVZTzgyUW5Jd2NTeW5DRDA4NXhMUEV3b04yZURFIiwiYWxnIjoiUlMyNTYifQ.eyJ2ZXIiOjEsImp0aSI6IkFULkVUREJNNnJibEVwTzhmVmN0Ql85Sy1kS0FqOFd5QXNMUkJMZ01sQV8wZUEiLCJpc3MiOiJodHRwczovL2lkLmVhdG9uLmNvbS9vYXV0aDIvYXVzOWQ4dnhlOFZNWTFod0M0eDciLCJhdWQiOiJhcGk6Ly9ibGMiLCJpYXQiOjE2ODUwNDM1OTMsImV4cCI6MTY4NTA0NzE5MywiY2lkIjoiMG9hY3V6bmY3am1OOUM4RGs0eDciLCJzY3AiOlsiY2xpZW50X2NyZWQiXSwiYWRvcHRlcmlkIjoiYjgzYjJlZjItMmJhZi1iZTEzLTNmOGItZGI3ZmQyNWYyMDE3Iiwic3ViIjoiMG9hY3V6bmY3am1OOUM4RGs0eDciLCJibGNzYWlkIjoiYTMyNzk5NmYtMDM1OC00MWNhLTk1NjAtNGJlMGQ4MGM1ZGYzIiwibmFtZSI6IiAifQ.dp9q8PL_ids9XHXrH5CXip6Muq1919yr_eB6x8sHGIz2wQ2NAVcCMGxRYxhhO-cwdVlnLkYpHKQFp6nMBErN_lEF3UprrBaBETAxsNaIDiR349DvkM3FJ_soeLFLfCDxBUUG6SN1mhpRIaLkCdWYmGrHM3vU8RKwT7naW1nEtfxVk1iARrREgJvlK1RpgjS3nnDAI9RKG1nhcbl_iXuOKyt0T9vRRW3irwcA82k5kCBSkqW0G7Fh6NOaGPzUaeCrbhLCFudPIShVcmyXQiEPFBYAd03Qx8u_FkU8GR7AmqZPrJEOYrbQ0CIcuAAmwDfBCOdruIgX6qb80Pn5TVJzOw",
+		"expiresAt": "2023-05-25T20:39:53Z"
+	}
+}

@@ -11,7 +11,7 @@
   var org_file = "org_PSEC.json";
   var org_info = emcb.readJSON(org_file);
   var installer_info = {
-    "email": "rmb147@pitt.edu",
+    "email": "psecpsec1234@gmail.com",
     // "roleId": *call emcb.getRoles(app_info,org_info) to get this value,
     "organizationId": org_info.id
   };

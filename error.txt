@@ -1,0 +1,7 @@
+/var/lib/cloud9/emcb/repo/emcb_lib.js:702
+        "Authorization": "Bearer " + org_info.auth.token,
+                                                   ^
+
+TypeError: Cannot read properties of undefined (reading 'token')
+    at /var/lib/cloud9/emcb/repo/emcb_lib.js:702:52
+    at processTicksAndRejections (node:internal/process/task_queues:96:5)

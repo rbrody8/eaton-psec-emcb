@@ -70,7 +70,7 @@
         
         // wait for all devices to turn off...
         Promise.all(all_turn_off_promises).then(function() {
-            // ...then turn on all breakers on (i.e. close them)
+            // ...then turn on all breakers on (i.e. open them)
             var ten_sec_in_ms = 10000;
             console.log("All breakers are open. Waiting 10 seconds before reclosing breakers to avoid a 'Too Many Requests' error...");
             emcb.asyncWait(ten_sec_in_ms).then(function() {

@@ -143,7 +143,7 @@
     if (poll_imediately) {
       emcb.getDevices(app_info,org_info).then((device_list) => {
         for (let i=0; i<device_list.length; i=i+1){
-          if (i !== 0) {
+          if (i !== 2) {
             continue;
           }
           var device = device_list[i];
@@ -160,20 +160,20 @@
   });
   
   // UDP Server
-  udp_socket.on("message", (msg, rinfo) => {
-    console.log("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
-  });
+  // udp_socket.on("message", (msg, rinfo) => {
+  //   console.log("server got: " + msg + " from " + rinfo.address + ":" + rinfo.port);
+  // });
   
-  udp_socket.on('listening', function(){
-    var address = udp_socket.address();
-    var port = address.port;
-    console.log('UDP server is listening at port ' + port);
-  });
-  udp_socket.bind(UDP_PORT); // i think you have to use port 32866: https://api.em.eaton.com/docs/emlcp.html#section/Smart-Breaker-Local-Communications-Protocol/Protocol-Overview
+  // udp_socket.on('listening', function(){
+  //   var address = udp_socket.address();
+  //   var port = address.port;
+  //   console.log('UDP server is listening at port ' + port);
+  // });
+  // udp_socket.bind(UDP_PORT); // i think you have to use port 32866: https://api.em.eaton.com/docs/emlcp.html#section/Smart-Breaker-Local-Communications-Protocol/Protocol-Overview
   // emcb.pollAllUDP(udp_socket);
-  emcb.deleteAllUDPKeys(app_info,org_info).then(() => {
-    emcb.monitorUDPKeys(app_info,org_info);
-  });
+  // emcb.deleteAllUDPKeys(app_info,org_info).then(() => {
+  //   emcb.monitorUDPKeys(app_info,org_info);
+  // });
   // udp_server.send(response)
   
   

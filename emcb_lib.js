@@ -130,6 +130,7 @@ const interfaces = os.networkInterfaces(); // for figuring out UDP broadcast IP 
 const localIpV4Address = require("local-ipv4-address");
 // const plotly = require("plotly.js-dist"); // used for plotting (but it's not working)
 
+
 /******************************************************************************
 Description (from API documentation):
 - Obtain a service account authorization token for an Application or an 
@@ -184,7 +185,7 @@ async function getAuthToken(api_key, client_ID, client_secret) {
     //    'expiresAt': expiration_str_ISO_8601
     //  }
   });
-  
+
   return response_promise;
 }
 
@@ -342,7 +343,7 @@ async function createOrg(app_filename, address_info) {
       }
     };
     var payload = {
-      "name": "Eaton PSEC",
+      "name": "Eaton PSEC Official Use This One",
       "description": "Eaton Power Systems Experience Center (Warrendale)"
     };
     create_org_request.data = payload;
@@ -661,6 +662,48 @@ async function listOrgs(app_info) {
     var response_promise = axios(request);
     response_promise.then((response) => {
       console.log(response.data);
+    });
+  });
+}
+
+async function getOrgInfo(app_info,org_id) {
+  return getAPIAuthToken(app_info).then((app_info) => {
+    var request = {
+      "method": "GET",
+      "url": "https://api.em.eaton.com/api/v1/organizations/" + org_id,
+      "headers": {
+        "Em-Api-Subscription-Key": app_info.api_key,
+        "Authorization": "Bearer " + app_info.auth.token,
+        "Accept": "application/json",
+        "Content-Type": "application/json; charset=utf-8"
+      }
+    };
+    var response_promise = axios(request);
+    return response_promise.then((response) => {
+      console.log(response.data);
+      return response.data.data;
+    });
+  });
+}
+
+async function rotateSecret(app_info,org_info,secretName) {
+  return getAPIAuthToken(app_info).then((app_info) => {
+    var serviceAccountId = org_info.id;
+    var url = `https://api.em.eaton.com/api/v1/serviceAccounts/${serviceAccountId}/secrets/${secretName}`;
+    var request = {
+      "method": "GET",
+      "url": url,
+      "headers": {
+        "Em-Api-Subscription-Key": app_info.api_key,
+        "Authorization": "Bearer " + org_info.auth.token,
+        "Accept": "application/json",
+        "Content-Type": "application/json; charset=utf-8"
+      }
+    };
+    var response_promise = axios(request);
+    return response_promise.then((response) => {
+      console.log(response.data);
+      return response.data.data;
     });
   });
 }
@@ -2074,7 +2117,7 @@ module.exports = {getAuthToken, getOrgAuthToken, getAPIAuthToken, createOrg,
   createUDPKey, deleteUDPKey, assignUDPKey, asyncWait, asyncWaitOneDay,
   monitorUDPKeys, isExpired, deleteAllUDPKeys, createEMCBudpBuffer, 
   incrementSequenceNumber, getIpAddress, getBroadcastAddress, UDPsend, 
-  getUDPport, getTelemetryDataUDP, pollAllUDP
+  getUDPport, getTelemetryDataUDP, pollAllUDP, getOrgInfo, rotateSecret
   // EMCB_UDP_MESSAGE_CODE_GET_NEXT_SEQUENCE_NUMBER,
   // EMCB_UDP_MESSAGE_CODE_GET_DEVICE_DEBUG_DATA,
   // EMCB_UDP_MESSAGE_CODE_GET_DEVICE_STATUS,
